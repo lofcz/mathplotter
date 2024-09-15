@@ -14,7 +14,7 @@ let hoverGlider = null;
 
 function detectParameters(expression) { 
     const varRegex = /\b[a-zA-Z_]\w*\b/g; 
-    const reserved = ['x', 'y', 'sin', 'cos', 'tan', 'log', 'exp', 'sqrt', 'abs', 'pow', 'JXG', 'create', 'board', 'Math', 'pi', 'e']; 
+    const reserved = ['x', 'y', 'acos', 'acosh', 'acot', 'acoth', 'acsc', 'acsch', 'asec', 'asech', 'asin', 'asinh', 'atan', 'atan2', 'atanh', 'cos', 'cosh', 'cot', 'coth', 'csc', 'csch', 'sec', 'sech', 'sin', 'sinh', 'tan', 'tanh', 'isZero', 'isPrime', 'isPositive', 'isNegative', 'isNaN', 'zeta', 'erf', 'randomInt', 'random', 'pickRandom', 'lgamma', 'factorial', 'size', 'and', 'not', 'or', 'xor', 'abs', 'add', 'ceil', 'cube', 'divide', 'expm1', 'fix', 'floor', 'gcd', 'log10', 'log1p', 'log2', 'mod', 'multiply', 'round', 'substract', 'sum', 'log', 'exp', 'sqrt', 'abs', 'pow', 'JXG', 'create', 'board', 'Math', 'pi', 'e', 'mean', 'min', 'mode', 'prod', 'std', 'variance', 'mad', 'cumsum']; 
     let vars = expression.match(varRegex) || []; 
     vars = vars.filter(v => !reserved.includes(v)); 
     return [...new Set(vars)]; 
@@ -363,50 +363,52 @@ if (dist < threshold) {
     hoverLabel.show();
 }
 } else if (!isImplicit && functionGraph) {
-const scope = { ...currentParameterValues, x };
-const fx = compiledExpression.evaluate(scope);
-if (fx !== null && !isNaN(fx)) {
-    const dist = Math.abs(y - fx);
-    if (dist < threshold) {
-        nearestPoint = [x, fx];
+    const scope = { ...currentParameterValues, x };
+    const fx = compiledExpression.evaluate(scope);
+    
+    if (fx !== null && !isNaN(fx) && typeof fx === 'number') {
+        const dist = Math.abs(y - fx);
+        if (dist < threshold) {
+            nearestPoint = [x, fx];
+        }
     }
-}
 
-if (nearestPoint) {
-    if (!hoverDot) {
-        hoverDot = board.create('point', nearestPoint, {
-            size: 4,
-            color: 'red',
-            fixed: true,
-            face: 'o',
-            highlight: false,
-            showInfobox: false
-        });
-        hoverLabel = board.create('text', [0, 0, ''], {
-            anchor: hoverDot,
-            anchorX: 'middle',
-            anchorY: 'bottom',
-            fixed: true,
-            highlight: false,
-            cssStyle: "margin-bottom: 20px",
-            showInfobox: false
-        });
+    if (nearestPoint) {
+        if (!hoverDot) {
+            hoverDot = board.create('point', nearestPoint, {
+                size: 4,
+                color: 'red',
+                fixed: true,
+                face: 'o',
+                highlight: false,
+                showInfobox: false
+            });
+            hoverLabel = board.create('text', [0, 0, ''], {
+                anchor: hoverDot,
+                anchorX: 'middle',
+                anchorY: 'bottom',
+                fixed: true,
+                highlight: false,
+                cssStyle: "margin-bottom: 20px",
+                showInfobox: false
+            });
+        } else {
+            hoverDot.setPosition(JXG.COORDS_BY_USER, nearestPoint);
+        }
+        hoverDot.show();
+
+        hoverLabel.setText(`f(${nearestPoint[0].toFixed(2)}) = ${(nearestPoint[1].toFixed(2) ?? 0)}`);
+        hoverLabel.show();
     } else {
-        hoverDot.setPosition(JXG.COORDS_BY_USER, nearestPoint);
+        if (hoverDot) hoverDot.hide();
+        if (hoverLabel) hoverLabel.hide();
     }
-    hoverDot.show();
-    hoverLabel.setText(`f(${nearestPoint[0].toFixed(2)}) = ${nearestPoint[1].toFixed(2)}`);
-    hoverLabel.show();
 } else {
     if (hoverDot) hoverDot.hide();
+    if (hoverGlider) hoverGlider.hide();
     if (hoverLabel) hoverLabel.hide();
 }
-} else {
-if (hoverDot) hoverDot.hide();
-if (hoverGlider) hoverGlider.hide();
-if (hoverLabel) hoverLabel.hide();
-}
-board.update();
+    board.update();
 }
 
 
