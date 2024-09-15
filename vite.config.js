@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import path from 'path'
 
-const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'))
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const packageJson = JSON.parse(readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
 const header = `
 /**
  * Plotter.js
@@ -8,7 +13,7 @@ const header = `
  * Author: ${packageJson.author}
  * License: ${packageJson.license}
  */
-`
+`;
 
 // Vlastní plugin pro přidání hlavičky
 function addHeaderPlugin() {
