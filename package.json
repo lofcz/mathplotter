@@ -4,7 +4,13 @@
   "description": "Plotting made simple",
   "main": "plotter.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "release:patch": "npm version patch && npm run build",
+    "release:minor": "npm version minor && npm run build",
+    "release:major": "npm version major && npm run build"
   },
   "repository": {
     "type": "git",
@@ -21,5 +27,11 @@
   "bugs": {
     "url": "https://github.com/lofcz/mathplotter/issues"
   },
-  "homepage": "https://github.com/lofcz/mathplotter#readme"
+  "homepage": "https://github.com/lofcz/mathplotter#readme",
+  "devDependencies": {
+    "vite": "^5.4.5"
+  },
+  "dependencies": {
+    "@rollup/plugin-replace": "^5.0.7"
+  }
 }
