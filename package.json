@@ -1,0 +1,25 @@
+{
+  "name": "mathplotter",
+  "version": "1.0.0",
+  "description": "Plotting made simple",
+  "main": "plotter.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lofcz/mathplotter.git"
+  },
+  "keywords": [
+    "math",
+    "plotting",
+    "chart",
+    "graph"
+  ],
+  "author": "Matěj \"lofcz\" Štágl",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lofcz/mathplotter/issues"
+  },
+  "homepage": "https://github.com/lofcz/mathplotter#readme"
+}
