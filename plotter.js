@@ -277,6 +277,7 @@ class FunctionGrapher {
                 showCopyright: false,
                 showNavigation: false,
                 keepaspectratio: true,
+                grid: false,
                 pan: { 
                     enabled: true, 
                     needshift: false 
@@ -321,7 +322,16 @@ class FunctionGrapher {
                 }, 5); 
             }); 
 
-            this.board.on('move', this.handleMouseMove);
+            let isThrottled = false;
+            this.board.on('move', (e) => {
+                if (!isThrottled) {
+                    this.handleMouseMove(e);
+                    isThrottled = true;
+                    requestAnimationFrame(() => {
+                        isThrottled = false;
+                    });
+                }
+            });
         } 
     }
 
@@ -329,13 +339,13 @@ class FunctionGrapher {
         const coords = this.board.getUsrCoordsOfMouse(e);
         const x = coords[0], y = coords[1];
         const threshold = 0.5;
-
+    
         // Skrýt všechny hover objekty před kontrolou
         this.functions.forEach(func => {
             if (func.hoverDot) func.hoverDot.hide();
             if (func.hoverLabel) func.hoverLabel.hide();
         });
-
+    
         // Pro každou funkci zkontrolovat blízkost
         this.functions.forEach(currentFunction => {
             if (currentFunction.isImplicit && currentFunction.graph) {
@@ -349,7 +359,7 @@ class FunctionGrapher {
                 } catch {
                     fx = null;
                 }
-
+    
                 if (fx !== null && !isNaN(fx) && typeof fx === 'number') {
                     const dist = Math.abs(y - fx);
                     if (dist < threshold) {
@@ -377,14 +387,14 @@ class FunctionGrapher {
                             currentFunction.hoverDot.setPosition(JXG.COORDS_BY_USER, nearestPoint);
                         }
                         currentFunction.hoverDot.show();
-
+    
                         currentFunction.hoverLabel.setText(`f(${nearestPoint[0].toFixed(2)}) = ${(nearestPoint[1].toFixed(2) ?? 0)}`);
                         currentFunction.hoverLabel.show();
                     }
                 }
             }
         });
-
+    
         this.board.update();
     }
 
@@ -413,21 +423,8 @@ class FunctionGrapher {
         this.board.update();
     }
 
-    memoize(fn) {
-        const cache = new Map();
-        return (...args) => {
-            const key = JSON.stringify(args);
-            if (cache.has(key)) {
-                return cache.get(key);
-            }
-            const result = fn(...args);
-            cache.set(key, result);
-            return result;
-        };
-    }
-
     compileAndPlotFunction(currentFunction, recompile = true, bbox = {}) {
-        if (recompile) {
+        if (recompile || !currentFunction.compiledExpression) {
             try {
                 currentFunction.compiledExpression = window.math.compile(currentFunction.expression);
             } catch (error) {
@@ -439,33 +436,28 @@ class FunctionGrapher {
         
         const { xMin, xMax, yMin, yMax } = bbox;
         const scope = { ...this.parameterValues };
-        const memoizedEvaluate = this.memoize((x, y) => {
-            scope.x = x;
-            scope.y = y;
-            return currentFunction.compiledExpression.evaluate(scope);
-        });
-    
         const f = currentFunction.isImplicit
-            ? (x, y) => {
-                try {
-                    return memoizedEvaluate(x, y);
-                } catch {
-                    return Number.NaN;
-                }
-            }
-            : (x) => {
+        ? (x, y) => {
+            try {
                 scope.x = x;
-                try {
-                    return memoizedEvaluate(x);
-                } catch {
-                    return null;
-                }
-            };
-    
+                scope.y = y;
+                return currentFunction.compiledExpression.evaluate(scope);
+            } catch {
+                return Number.NaN;
+            }
+        }
+        : (x) => {
+            scope.x = x;
+            try {
+                return currentFunction.compiledExpression.evaluate(scope);
+            } catch {
+                return null;
+            }
+        };
 
         if (currentFunction.isImplicit) {
             if (currentFunction.graph) {
-                currentFunction.graph.update();
+                currentFunction.graph.updateRenderer();
             } else {
                 currentFunction.graph = this.board.create('implicitcurve', [f], {
                     strokeColor: currentFunction.color,
@@ -474,17 +466,27 @@ class FunctionGrapher {
                     ymin: yMin,
                     ymax: yMax,
                     grid: true,
-                    resolution_inner: 30,
-                    resolution_outer: 30
+                    resolution_inner: 50,
+                    resolution_outer: 50
                 });
             }
         } else {
             if (currentFunction.graph) {
-                this.board.removeObject(currentFunction.graph);
+                currentFunction.graph.dataX = [];
+                currentFunction.graph.dataY = [];
+                
+                for (let x = xMin; x <= xMax; x += 0.1) {
+                    currentFunction.graph.dataX.push(x);
+                    currentFunction.graph.dataY.push(f(x));
+                }
+                
+                currentFunction.graph.updateRenderer();
             }
-            currentFunction.graph = this.board.create('functiongraph', [f, xMin, xMax], {
-                strokeColor: currentFunction.color
-            });
+            else {
+                currentFunction.graph = this.board.create('functiongraph', [f, xMin, xMax], {
+                    strokeColor: currentFunction.color
+                });
+            }
         }
     }
 
