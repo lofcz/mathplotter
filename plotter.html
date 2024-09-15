@@ -99,7 +99,7 @@
 
         function detectParameters(expression) { 
             const varRegex = /\b[a-zA-Z_]\w*\b/g; 
-            const reserved = ['x', 'y', 'sin', 'cos', 'tan', 'log', 'exp', 'sqrt', 'abs', 'pow', 'JXG', 'create', 'board', 'Math']; 
+            const reserved = ['x', 'y', 'sin', 'cos', 'tan', 'log', 'exp', 'sqrt', 'abs', 'pow', 'JXG', 'create', 'board', 'Math', 'pi', 'e']; 
             let vars = expression.match(varRegex) || []; 
             vars = vars.filter(v => !reserved.includes(v)); 
             return [...new Set(vars)]; 
