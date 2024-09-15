@@ -12,20 +12,22 @@ class FunctionGrapher {
         this.hoverLabel = null;
         this.hoverGlider = null;
         this.functions = [];
-        this.colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'cyan', 'magenta']; // Přidáno pro vícenásobné grafy
-        
-        // Sdílené parametry
-        this.parameterConfigs = {}; // { paramName: { label, min, max, default } }
-        this.parameterValues = {};  // { paramName: currentValue }
+        this.colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'cyan', 'magenta'];
+        this.parameterConfigs = {};
+        this.parameterValues = {};  
 
         // Bind callbacks to ensure 'this' refers to the class instance
         this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleUpdate = this.handleUpdate.bind(this);
+        this.handleMove = this.handleMove.bind(this);
+        this.parseButtonHandler = this.parseButtonHandler.bind(this);
+        this.isThrottled = false;
     }
 
     // Metoda k vytvoření unikátního ID pro každou funkci
     generateFunctionId() {
-        return 'fn_' + Math.random().toString(36).substr(2, 9);
-    }
+        return 'fn_' + Math.random().toString(36).slice(2, 11);
+    }    
 
     detectParameters(expression) { 
         const varRegex = /\b[a-zA-Z_]\w*\b/g; 
@@ -306,33 +308,34 @@ class FunctionGrapher {
                 }
             }); 
 
-            // Tick Distance Calculation
-            this.board.on('update', () => { 
-                if (this.chartIgnoreUpdates) { 
-                    return; 
-                } 
-
-                this.chartIgnoreUpdates = true; 
-
-                if (this.debounceTimeout) { 
-                    clearTimeout(this.debounceTimeout); 
-                } 
-                this.debounceTimeout = setTimeout(() => { 
-                    this.updateFunctionGraph(false); 
-                }, 5); 
-            }); 
-
-            let isThrottled = false;
-            this.board.on('move', (e) => {
-                if (!isThrottled) {
-                    this.handleMouseMove(e);
-                    isThrottled = true;
-                    requestAnimationFrame(() => {
-                        isThrottled = false;
-                    });
-                }
-            });
+            this.board.on('update', this.handleUpdate);
+            this.board.on('move', this.handleMove);
         } 
+    }
+
+    handleUpdate() { 
+        if (this.chartIgnoreUpdates) { 
+            return; 
+        } 
+
+        this.chartIgnoreUpdates = true; 
+
+        if (this.debounceTimeout) { 
+            clearTimeout(this.debounceTimeout); 
+        } 
+        this.debounceTimeout = setTimeout(() => { 
+            this.updateFunctionGraph(false); 
+        }, 5); 
+    }
+
+    handleMove(e) {
+        if (!this.isThrottled) {
+            this.handleMouseMove(e);
+            this.isThrottled = true;
+            requestAnimationFrame(() => {
+                this.isThrottled = false;
+            });
+        }
     }
 
     handleMouseMove(e) {
@@ -540,25 +543,21 @@ class FunctionGrapher {
     }
 
     init() {
-        // Inicializační kód nyní nespecifikuje jednu funkci
-        // Můžete nastavit výchozí funkce zde, pokud chcete
-        // Např.:
-        // this.plot([{ fn: 'a * sin(b * x) + c', pars: [{name: 'a', min:1, max:5, value:1}, ...] }, ...]);
-
         // Bind Parse Button
-        document.getElementById('parseButton').addEventListener('click', () => {
-            const input = this.getInputExpr();
-            try {
-                this.plotInternal(input);
-
-            } catch (error) {
-                console.error(error);
-                alert('Chyba při parsování výrazů.');
-            }
-        });
+        document.getElementById('parseButton').addEventListener('click', this.parseButtonHandler);
 
         const input = this.getInputExpr();
         this.plotInternal(input);
+    }
+
+    parseButtonHandler(event) {
+        const input = this.getInputExpr();
+        try {
+            this.plotInternal(input);
+        } catch (error) {
+            console.error(error);
+            alert('Chyba při parsování výrazů.');
+        }
     }
 
     plot(expressions) {
@@ -656,6 +655,100 @@ class FunctionGrapher {
 
                 document.getElementById("expression").value = fnDump;
             }
+        }
+    }
+
+    // Metoda destroy() pro uvolnění paměti a odstranění event handlerů
+    destroy() {
+        if (this.board) {
+            // Remove event listeners from the board
+            if (this.handleUpdate) {
+                this.board.off('update', this.handleUpdate);
+            }
+            if (this.handleMove) {
+                this.board.off('move', this.handleMove);
+            }
+
+            // Remove all objects from the board
+            this.functions.forEach(fn => {
+                if (fn.graph) {
+                    this.board.removeObject(fn.graph);
+                }
+                if (fn.hoverDot) {
+                    this.board.removeObject(fn.hoverDot);
+                }
+                if (fn.hoverLabel) {
+                    this.board.removeObject(fn.hoverLabel);
+                }
+            });
+
+            // Remove the board element from DOM
+            const boardElement = document.getElementById('jxgbox');
+            if (boardElement) {
+                boardElement.remove();
+            }
+
+
+            const controlsElement = document.querySelector(".controls");
+
+            if (controlsElement) {
+                controlsElement.remove();
+            }
+
+            // Delete the board
+            JXG.JSXGraph.freeBoard(this.board);
+            this.board = undefined;
+        }
+
+        // Remove event listeners from parseButton
+        const parseButton = document.getElementById('parseButton');
+        if (parseButton && this.parseButtonHandler) {
+            parseButton.removeEventListener('click', this.parseButtonHandler);
+        }
+
+        // Clear parameter controls
+        const parameterContainer = document.getElementById('parameters');
+        if (parameterContainer) {
+            parameterContainer.innerHTML = '';
+        }
+
+        // Clear functions array
+        this.functions = [];
+
+        // Clear any parameters and values
+        this.parameterConfigs = {};
+        this.parameterValues = {};
+
+        // Clear any timeouts
+        if (this.debounceTimeout) {
+            clearTimeout(this.debounceTimeout);
+        }
+    }
+
+    // Metoda save() pro vytvoření SVG a stažení uživateli
+    save() {
+        if (this.board) {
+            // Get SVG element
+            let svgData = this.board.renderer.svgRoot.outerHTML;
+
+            // Create a Blob
+            let blob = new Blob([svgData], {type: "image/svg+xml;charset=utf-8"});
+
+            // Create an object URL
+            let url = URL.createObjectURL(blob);
+
+            // Create an anchor element and trigger download
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = 'graph.svg';
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            alert('Grafická plocha není inicializována.');
         }
     }
 
