@@ -1,596 +1,623 @@
-let currentParameterConfigs = {}; 
-let currentParameterValues = {}; 
-let board = null; 
-let functionGraph = null; 
-let implicitCurve = null; 
-let compiledExpression = null; 
-let debounceTimeout = null; 
-var storedExpr; 
-var chartIgnoreUpdates = false; 
-let isImplicit = false;
-let hoverDot = null;
-let hoverLabel = null;
-let hoverGlider = null; 
+class FunctionGrapher {
+    constructor() {
+        this.currentParameterConfigs = {}; 
+        this.currentParameterValues = {}; 
+        this.board = null; 
+        this.functionGraph = null; 
+        this.implicitCurve = null; 
+        this.compiledExpression = null; 
+        this.debounceTimeout = null; 
+        this.storedExpr = ''; 
+        this.chartIgnoreUpdates = false; 
+        this.isImplicit = false;
+        this.hoverDot = null;
+        this.hoverLabel = null;
+        this.hoverGlider = null;
 
-function detectParameters(expression) { 
-    const varRegex = /\b[a-zA-Z_]\w*\b/g; 
-    const reserved = ['x', 'y', 'acos', 'acosh', 'acot', 'acoth', 'acsc', 'acsch', 'asec', 'asech', 'asin', 'asinh', 'atan', 'atan2', 'atanh', 'cos', 'cosh', 'cot', 'coth', 'csc', 'csch', 'sec', 'sech', 'sin', 'sinh', 'tan', 'tanh', 'isZero', 'isPrime', 'isPositive', 'isNegative', 'isNaN', 'zeta', 'erf', 'randomInt', 'random', 'pickRandom', 'lgamma', 'factorial', 'size', 'and', 'not', 'or', 'xor', 'abs', 'add', 'ceil', 'cube', 'divide', 'expm1', 'fix', 'floor', 'gcd', 'log10', 'log1p', 'log2', 'mod', 'multiply', 'round', 'substract', 'sum', 'log', 'exp', 'sqrt', 'abs', 'pow', 'JXG', 'create', 'board', 'Math', 'pi', 'e', 'mean', 'min', 'mode', 'prod', 'std', 'variance', 'mad', 'cumsum']; 
-    let vars = expression.match(varRegex) || []; 
-    vars = vars.filter(v => !reserved.includes(v)); 
-    return [...new Set(vars)]; 
-} 
+        // Bind callbacks to ensure 'this' refers to the class instance
+        this.handleMouseMove = this.handleMouseMove.bind(this);
+    }
 
-function createParameterControls(params) { 
-    const container = document.getElementById('parameters'); 
-    container.innerHTML = ''; 
+    detectParameters(expression) { 
+        const varRegex = /\b[a-zA-Z_]\w*\b/g; 
+        const reserved = [
+            'x', 'y', 'acos', 'acosh', 'acot', 'acoth', 'acsc', 'acsch', 'asec', 'asech',
+            'asin', 'asinh', 'atan', 'atan2', 'atanh', 'cos', 'cosh', 'cot', 'coth', 'csc',
+            'csch', 'sec', 'sech', 'sin', 'sinh', 'tan', 'tanh', 'isZero', 'isPrime', 
+            'isPositive', 'isNegative', 'isNaN', 'zeta', 'erf', 'randomInt', 'random', 
+            'pickRandom', 'lgamma', 'factorial', 'size', 'and', 'not', 'or', 'xor', 'abs', 
+            'add', 'ceil', 'cube', 'divide', 'expm1', 'fix', 'floor', 'gcd', 'log10', 
+            'log1p', 'log2', 'mod', 'multiply', 'round', 'substract', 'sum', 'log', 'exp', 
+            'sqrt', 'pow', 'JXG', 'create', 'board', 'Math', 'pi', 'e', 'mean', 'min', 
+            'mode', 'prod', 'std', 'variance', 'mad', 'cumsum'
+        ]; 
+        let vars = expression.match(varRegex) || []; 
+        vars = vars.filter(v => !reserved.includes(v)); 
+        return [...new Set(vars)]; 
+    } 
 
-    params.forEach(param => { 
-        const config = currentParameterConfigs[param]; 
+    createParameterControls(params) { 
+        const container = document.getElementById('parameters'); 
+        container.innerHTML = ''; 
 
-        const group = document.createElement('div'); 
-        group.className = 'control-group'; 
+        params.forEach(param => { 
+            const config = this.currentParameterConfigs[param]; 
 
-        const label = document.createElement('label'); 
-        label.innerText = `Parametr "${param}":`; 
-        label.htmlFor = `label_${param}`; 
-        group.appendChild(label); 
+            // Control Group for Parameter Configuration
+            const group = document.createElement('div'); 
+            group.className = 'control-group'; 
 
-        const labelInput = document.createElement('input'); 
-        labelInput.type = 'text'; 
-        labelInput.id = `label_${param}`; 
-        labelInput.placeholder = 'Popisek'; 
-        labelInput.value = config.label; 
-        group.appendChild(labelInput); 
+            // Label Input
+            const label = document.createElement('label'); 
+            label.innerText = `Parametr "${param}":`; 
+            label.htmlFor = `label_${param}`; 
+            group.appendChild(label); 
 
-        const minLabel = document.createElement('span'); 
-        minLabel.innerText = 'Min:'; 
-        minLabel.htmlFor = `min_${param}`; 
-        group.appendChild(minLabel); 
+            const labelInput = document.createElement('input'); 
+            labelInput.type = 'text'; 
+            labelInput.id = `label_${param}`; 
+            labelInput.placeholder = 'Popisek'; 
+            labelInput.value = config.label; 
+            group.appendChild(labelInput); 
 
-        const minInput = document.createElement('input'); 
-        minInput.type = 'number'; 
-        minInput.id = `min_${param}`; 
-        minInput.value = config.min; 
-        group.appendChild(minInput); 
+            // Min Input
+            const minLabel = document.createElement('span'); 
+            minLabel.innerText = 'Min:'; 
+            minLabel.htmlFor = `min_${param}`; 
+            group.appendChild(minLabel); 
 
-        const maxLabel = document.createElement('span'); 
-        maxLabel.innerText = 'Max:'; 
-        maxLabel.htmlFor = `max_${param}`; 
-        group.appendChild(maxLabel); 
+            const minInput = document.createElement('input'); 
+            minInput.type = 'number'; 
+            minInput.id = `min_${param}`; 
+            minInput.value = config.min; 
+            group.appendChild(minInput); 
 
-        const maxInput = document.createElement('input'); 
-        maxInput.type = 'number'; 
-        maxInput.id = `max_${param}`; 
-        maxInput.value = config.max; 
-        group.appendChild(maxInput); 
+            // Max Input
+            const maxLabel = document.createElement('span'); 
+            maxLabel.innerText = 'Max:'; 
+            maxLabel.htmlFor = `max_${param}`; 
+            group.appendChild(maxLabel); 
 
-        const defLabel = document.createElement('span'); 
-        defLabel.innerText = 'Default:'; 
-        defLabel.htmlFor = `default_${param}`; 
-        group.appendChild(defLabel); 
+            const maxInput = document.createElement('input'); 
+            maxInput.type = 'number'; 
+            maxInput.id = `max_${param}`; 
+            maxInput.value = config.max; 
+            group.appendChild(maxInput); 
 
-        const defInput = document.createElement('input'); 
-        defInput.type = 'number'; 
-        defInput.id = `default_${param}`; 
-        defInput.value = config.default; 
-        group.appendChild(defInput); 
+            // Default Input
+            const defLabel = document.createElement('span'); 
+            defLabel.innerText = 'Default:'; 
+            defLabel.htmlFor = `default_${param}`; 
+            group.appendChild(defLabel); 
 
-        labelInput.addEventListener('input', () => { 
-            config.label = labelInput.value.trim() !== '' ? labelInput.value.trim() : param; 
+            const defInput = document.createElement('input'); 
+            defInput.type = 'number'; 
+            defInput.id = `default_${param}`; 
+            defInput.value = config.default; 
+            group.appendChild(defInput); 
 
-            const sliderLabel = document.getElementById(`slider_label_${param}`); 
-            if (sliderLabel) { 
-                sliderLabel.innerText = config.label + ':'; 
-            } 
-            scheduleUpdateGraph(); 
-        }); 
+            // Event Listeners for Config Inputs
+            labelInput.addEventListener('input', () => { 
+                config.label = labelInput.value.trim() !== '' ? labelInput.value.trim() : param; 
 
-        minInput.addEventListener('input', () => { 
-            let newMin = parseFloat(minInput.value); 
-            newMin = isNaN(newMin) ? -5 : newMin; 
-            config.min = newMin; 
+                const sliderLabel = document.getElementById(`slider_label_${param}`); 
+                if (sliderLabel) { 
+                    sliderLabel.innerText = config.label + ':'; 
+                } 
+                this.scheduleUpdateGraph(); 
+            }); 
 
-            if (currentParameterValues[param] < config.min) { 
-                currentParameterValues[param] = config.min; 
-                defInput.value = currentParameterValues[param]; 
+            minInput.addEventListener('input', () => { 
+                let newMin = parseFloat(minInput.value); 
+                newMin = isNaN(newMin) ? -5 : newMin; 
+                config.min = newMin; 
+
+                if (this.currentParameterValues[param] < config.min) { 
+                    this.currentParameterValues[param] = config.min; 
+                    defInput.value = this.currentParameterValues[param]; 
+                    const slider = document.getElementById(`slider_${param}`); 
+                    if (slider) { 
+                        slider.value = this.currentParameterValues[param]; 
+                    } 
+                    const sliderVal = document.getElementById(`value_${param}`); 
+                    if (sliderVal) { 
+                        sliderVal.innerText = this.currentParameterValues[param].toFixed(2); 
+                    } 
+                } 
+
+                const sliderMin = document.getElementById(`slider_${param}`); 
+                if (sliderMin) { 
+                    sliderMin.min = config.min; 
+                } 
+                this.scheduleUpdateGraph(); 
+            }); 
+
+            maxInput.addEventListener('input', () => { 
+                let newMax = parseFloat(maxInput.value); 
+                newMax = isNaN(newMax) ? 5 : newMax; 
+                config.max = newMax; 
+
+                if (this.currentParameterValues[param] > config.max) { 
+                    this.currentParameterValues[param] = config.max; 
+                    defInput.value = this.currentParameterValues[param]; 
+                    const slider = document.getElementById(`slider_${param}`); 
+                    if (slider) { 
+                        slider.value = this.currentParameterValues[param]; 
+                    } 
+                    const sliderVal = document.getElementById(`value_${param}`); 
+                    if (sliderVal) { 
+                        sliderVal.innerText = this.currentParameterValues[param].toFixed(2); 
+                    } 
+                } 
+
+                const sliderMax = document.getElementById(`slider_${param}`); 
+                if (sliderMax) { 
+                    sliderMax.max = config.max; 
+                } 
+                this.scheduleUpdateGraph(); 
+            }); 
+
+            defInput.addEventListener('input', () => { 
+                let newDefault = parseFloat(defInput.value); 
+                newDefault = isNaN(newDefault) ? config.default : newDefault; 
+                newDefault = Math.max(newDefault, config.min); 
+                newDefault = Math.min(newDefault, config.max); 
+                config.default = newDefault; 
+                this.currentParameterValues[param] = newDefault; 
+                defInput.value = newDefault; 
+
                 const slider = document.getElementById(`slider_${param}`); 
                 if (slider) { 
-                    slider.value = currentParameterValues[param]; 
+                    slider.value = newDefault; 
                 } 
                 const sliderVal = document.getElementById(`value_${param}`); 
                 if (sliderVal) { 
-                    sliderVal.innerText = currentParameterValues[param].toFixed(2); 
+                    sliderVal.innerText = newDefault.toFixed(2); 
                 } 
-            } 
+                this.scheduleUpdateGraph(); 
+            }); 
 
-            const sliderMin = document.getElementById(`slider_${param}`); 
-            if (sliderMin) { 
-                sliderMin.min = config.min; 
-            } 
-            scheduleUpdateGraph(); 
+            container.appendChild(group); 
+
+            // Slider Group for Parameter
+            const sliderGroup = document.createElement('div'); 
+            sliderGroup.className = 'slider-group'; 
+
+            const sliderLabel = document.createElement('label'); 
+            sliderLabel.htmlFor = `slider_${param}`; 
+            sliderLabel.id = `slider_label_${param}`; 
+            sliderLabel.innerText = config.label + ':'; 
+            sliderGroup.appendChild(sliderLabel); 
+
+            const sliderInput = document.createElement('input'); 
+            sliderInput.type = 'range'; 
+            sliderInput.id = `slider_${param}`; 
+            sliderInput.min = config.min; 
+            sliderInput.max = config.max; 
+            sliderInput.step = 0.1; 
+            sliderInput.value = this.currentParameterValues[param]; 
+            sliderGroup.appendChild(sliderInput); 
+
+            const sliderValue = document.createElement('span'); 
+            sliderValue.className = 'slider-value'; 
+            sliderValue.id = `value_${param}`; 
+            sliderValue.innerText = this.currentParameterValues[param].toFixed(2); 
+            sliderGroup.appendChild(sliderValue); 
+
+            sliderInput.addEventListener('input', () => { 
+                const val = parseFloat(sliderInput.value); 
+                this.currentParameterValues[param] = val; 
+                sliderValue.innerText = val.toFixed(2); 
+                this.scheduleUpdateGraph(); 
+            }); 
+
+            container.appendChild(sliderGroup); 
         }); 
+    }
 
-        maxInput.addEventListener('input', () => { 
-            let newMax = parseFloat(maxInput.value); 
-            newMax = isNaN(newMax) ? 5 : newMax; 
-            config.max = newMax; 
+    initializeBoard() { 
+        if (!this.board) { 
 
-            if (currentParameterValues[param] > config.max) { 
-                currentParameterValues[param] = config.max; 
-                defInput.value = currentParameterValues[param]; 
-                const slider = document.getElementById(`slider_${param}`); 
-                if (slider) { 
-                    slider.value = currentParameterValues[param]; 
-                } 
-                const sliderVal = document.getElementById(`value_${param}`); 
-                if (sliderVal) { 
-                    sliderVal.innerText = currentParameterValues[param].toFixed(2); 
-                } 
-            } 
+            window["zoomTest"] = 1;
 
-            const sliderMax = document.getElementById(`slider_${param}`); 
-            if (sliderMax) { 
-                sliderMax.max = config.max; 
-            } 
-            scheduleUpdateGraph(); 
-        }); 
-
-        defInput.addEventListener('input', () => { 
-            let newDefault = parseFloat(defInput.value); 
-            newDefault = isNaN(newDefault) ? config.default : newDefault; 
-            newDefault = Math.max(newDefault, config.min); 
-            newDefault = Math.min(newDefault, config.max); 
-            config.default = newDefault; 
-            currentParameterValues[param] = newDefault; 
-            defInput.value = newDefault; 
-
-            const slider = document.getElementById(`slider_${param}`); 
-            if (slider) { 
-                slider.value = newDefault; 
-            } 
-            const sliderVal = document.getElementById(`value_${param}`); 
-            if (sliderVal) { 
-                sliderVal.innerText = newDefault.toFixed(2); 
-            } 
-            scheduleUpdateGraph(); 
-        }); 
-
-        container.appendChild(group); 
-
-        const sliderGroup = document.createElement('div'); 
-        sliderGroup.className = 'slider-group'; 
-
-        const sliderLabel = document.createElement('label'); 
-        sliderLabel.htmlFor = `slider_${param}`; 
-        sliderLabel.id = `slider_label_${param}`; 
-        sliderLabel.innerText = config.label + ':'; 
-        sliderGroup.appendChild(sliderLabel); 
-
-        const sliderInput = document.createElement('input'); 
-        sliderInput.type = 'range'; 
-        sliderInput.id = `slider_${param}`; 
-        sliderInput.min = config.min; 
-        sliderInput.max = config.max; 
-        sliderInput.step = 0.1; 
-        sliderInput.value = currentParameterValues[param]; 
-        sliderGroup.appendChild(sliderInput); 
-
-        const sliderValue = document.createElement('span'); 
-        sliderValue.className = 'slider-value'; 
-        sliderValue.id = `value_${param}`; 
-        sliderValue.innerText = currentParameterValues[param].toFixed(2); 
-        sliderGroup.appendChild(sliderValue); 
-
-        sliderInput.addEventListener('input', () => { 
-            const val = parseFloat(sliderInput.value); 
-            currentParameterValues[param] = val; 
-            sliderValue.innerText = val.toFixed(2); 
-            scheduleUpdateGraph(); 
-        }); 
-
-        container.appendChild(sliderGroup); 
-    }); 
-} 
-
-function initializeBoard() { 
-    if (!board) { 
-
-        window["zoomTest"] = 1;
-
-        board = JXG.JSXGraph.initBoard('jxgbox', { 
-            boundingbox: [-10, 10, 10, -10], 
-            axis: true, 
-            showCopyright: false,
-            showNavigation: false,
-            keepaspectratio: true,
-            pan: { 
-                enabled: true, 
-                needshift: false 
-            }, 
-            zoom: { 
-                factorX: 1.2, 
-                factorY: 1.2, 
-                wheel: true, 
-                needShift: false 
-
-            },
-            defaultAxes: {
-                x: {
-                    ticks: {
-                        insertTicks: true,
-                        minTicksDistance: 1,
-                        ticksDistance: 0.5
-                    }
+            this.board = JXG.JSXGraph.initBoard('jxgbox', { 
+                boundingbox: [-10, 10, 10, -10], 
+                axis: true, 
+                showCopyright: false,
+                showNavigation: false,
+                keepaspectratio: true,
+                pan: { 
+                    enabled: true, 
+                    needshift: false 
+                }, 
+                zoom: { 
+                    factorX: 1.2, 
+                    factorY: 1.2, 
+                    wheel: true, 
+                    needShift: false 
                 },
-                y: {
-                    ticks: {
-                        insertTicks: true,
-                        minTicksDistance: 1,
-                        ticksDistance: 1
+                defaultAxes: {
+                    x: {
+                        ticks: {
+                            insertTicks: true,
+                            minTicksDistance: 1,
+                            ticksDistance: 0.5
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            insertTicks: true,
+                            minTicksDistance: 1,
+                            ticksDistance: 1
+                        }
                     }
                 }
-            }
-        }); 
+            }); 
 
-        function generateTicks(start, end, distance) {
-            var ticks = [];
-            for (var i = start; i <= end; i += distance) {
-                ticks.push(i);
-            }
-            return ticks;
+            // Tick Distance Calculation
+            this.board.on('update', () => { 
+                if (this.chartIgnoreUpdates) { 
+                    return; 
+                } 
+
+                this.chartIgnoreUpdates = true; 
+
+                this.updateTicksDistance();
+
+                if (this.debounceTimeout) { 
+                    clearTimeout(this.debounceTimeout); 
+                } 
+                this.debounceTimeout = setTimeout(() => { 
+                    this.updateFunctionGraph(false); 
+                }, 10); 
+            }); 
+
+            this.board.on('move', this.handleMouseMove);
+        } 
+    }
+
+    generateTicks(start, end, distance) {
+        let ticks = [];
+        for (let i = start; i <= end; i += distance) {
+            ticks.push(i);
+        }
+        return ticks;
+    }
+
+    calculateTickDistance(zoomX) {
+        if (zoomX > 2) {
+            return 0.25;
         }
 
-        function calculateTickDistance(zoomX) {
+        if (zoomX > 1.5) {
+            return 1;
+        }
 
-            if (zoomX > 2) {
-                return 0.25;
-            }
+        if (zoomX > 0.95) {
+            return 2;
+        }
 
-            if (zoomX > 1.5) {
-                return 1;
-            }
-
-            if (zoomX > 0.95) {
-                return 2;
-            }
-
-            if (zoomX > 0.90) {
-                return 5;
-            }
-
+        if (zoomX > 0.90) {
             return 5;
+        }
 
-            const baseTickDistance = 1;
+        return 5;
+    }
 
-            const tickValues = [1, 2, 5, 10];
+    updateTicksDistance() {
+        const zoomLevel = Math.max(this.board.zoomX, this.board.zoomY);
+        const newTicksDistance = this.calculateTickDistance(zoomLevel);
 
-            let zoomTest = baseTickDistance / zoomX;
+        window["zoomTest"] = newTicksDistance;
 
-            let tickValue = tickValues[0];
-            let exponent = 0;
+        if (this.board.defaultAxes.x) {
+            this.board.defaultAxes.x.ticks.ticksDistance = newTicksDistance;
+        }
+        if (this.board.defaultAxes.y) {
+            this.board.defaultAxes.y.ticks.ticksDistance = newTicksDistance;
+        }
 
-            while (zoomTest < tickValue) {
-                exponent--;
-                for (let i = 0; i < tickValues.length; i++) {
-                    if (zoomTest >= tickValues[i] * Math.pow(10, exponent)) {
-                        tickValue = tickValues[i] * Math.pow(10, exponent);
-                    } else {
-                        break;
-                    }
+        this.board.update();
+    }
+
+    handleMouseMove(e) {
+        const coords = this.board.getUsrCoordsOfMouse(e);
+        const x = coords[0], y = coords[1];
+        const threshold = 0.5;
+        let nearestPoint = null;
+
+        if (this.hoverDot) this.hoverDot.hide();
+        if (this.hoverGlider) this.hoverGlider.hide();
+        if (this.hoverLabel) this.hoverLabel.hide();
+
+        if (this.isImplicit && this.implicitCurve) {
+            // Implicit curves are slow to handle hover
+            return;
+
+            // The following code is unreachable due to the return statement
+            /*
+            if (!this.hoverGlider) {
+                this.hoverGlider = this.board.create('glider', [x, y, this.implicitCurve], {
+                    size: 4,
+                    color: 'red',
+                    fixed: true,
+                    face: 'o',
+                    highlight: false,
+                    showInfobox: false
+                });
+                this.hoverLabel = this.board.create('text', [0, 0, ''], {
+                    anchor: this.hoverGlider,
+                    anchorX: 'middle',
+                    anchorY: 'bottom',
+                    cssStyle: "margin-bottom: 20px",
+                    fixed: true,
+                    highlight: false,
+                    showInfobox: false
+                });
+            } else {
+                this.hoverGlider.moveTo([x, y], 0);
+            }
+
+            const dx = x - this.hoverGlider.X();
+            const dy = y - this.hoverGlider.Y();
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < threshold) {
+                this.hoverGlider.show();
+                this.hoverLabel.setText(`(${this.hoverGlider.X().toFixed(2)}, ${this.hoverGlider.Y().toFixed(2)})`);
+                this.hoverLabel.show();
+            }
+            */
+        } else if (!this.isImplicit && this.functionGraph) {
+            const scope = { ...this.currentParameterValues, x };
+            let fx;
+            try {
+                fx = this.compiledExpression.evaluate(scope);
+            } catch {
+                fx = null;
+            }
+
+            if (fx !== null && !isNaN(fx) && typeof fx === 'number') {
+                const dist = Math.abs(y - fx);
+                if (dist < threshold) {
+                    nearestPoint = [x, fx];
                 }
             }
 
-            return tickValue;
+            if (nearestPoint) {
+                if (!this.hoverDot) {
+                    this.hoverDot = this.board.create('point', nearestPoint, {
+                        size: 4,
+                        color: 'red',
+                        fixed: true,
+                        face: 'o',
+                        highlight: false,
+                        showInfobox: false
+                    });
+                    this.hoverLabel = this.board.create('text', [0, 0, ''], {
+                        anchor: this.hoverDot,
+                        anchorX: 'middle',
+                        anchorY: 'bottom',
+                        fixed: true,
+                        highlight: false,
+                        cssStyle: "margin-bottom: 20px",
+                        showInfobox: false
+                    });
+                } else {
+                    this.hoverDot.setPosition(JXG.COORDS_BY_USER, nearestPoint);
+                }
+                this.hoverDot.show();
+
+                this.hoverLabel.setText(`f(${nearestPoint[0].toFixed(2)}) = ${(nearestPoint[1].toFixed(2) ?? 0)}`);
+                this.hoverLabel.show();
+            } else {
+                if (this.hoverDot) this.hoverDot.hide();
+                if (this.hoverLabel) this.hoverLabel.hide();
+            }
+        } else {
+            if (this.hoverDot) this.hoverDot.hide();
+            if (this.hoverGlider) this.hoverGlider.hide();
+            if (this.hoverLabel) this.hoverLabel.hide();
         }
+        this.board.update();
+    }
 
-        function updateTicksDistance() {
+    scheduleUpdateGraph() { 
+        this.chartIgnoreUpdates = true; 
+        this.updateFunctionGraph(); 
+    } 
 
-            const zoomLevel = board.zoomX; 
-            const newTicksDistance = 1 / zoomLevel; 
+    updateFunctionGraph(recompile = true) { 
+        const expr = this.storedExpr; 
+        if (expr === '') { 
+            alert('Výraz nesmí být prázdný.'); 
+            return; 
+        } 
 
-            window["zoomTest"] = calculateTickDistance(Math.max(board.zoomX, board.zoomY));
+        this.compileAndPlot(expr, recompile);
+    } 
 
-            board.defaultAxes.x.ticks.ticksDistance = newTicksDistance;
-            board.defaultAxes.x.ticks.ticksDistance = newTicksDistance;
+    compileAndPlot(expr, recompile = true) { 
 
-        }
-
-        board.on('update', () => { 
-
-            if (chartIgnoreUpdates) { 
+        if (recompile) {
+            try { 
+                this.compiledExpression = window.math.compile(expr); 
+            } catch (error) { 
+                console.log(error); 
+                alert('Chyba ve výrazu: ' + error.message); 
                 return; 
             } 
-
-            chartIgnoreUpdates = true; 
-
-            updateTicksDistance();
-
-            if (debounceTimeout) { 
-                clearTimeout(debounceTimeout); 
-            } 
-            debounceTimeout = setTimeout(() => { 
-                updateFunctionGraph(false); 
-            }, 10); 
-        }); 
-
-        board.on('move', handleMouseMove);
-    } 
-} 
-
-function handleMouseMove(e) {
-const coords = board.getUsrCoordsOfMouse(e);
-const x = coords[0], y = coords[1];
-let threshold = 0.5;
-let nearestPoint = null;
-
-if (hoverDot) hoverDot.hide();
-if (hoverGlider) hoverGlider.hide();
-if (hoverLabel) hoverLabel.hide();
-
-if (isImplicit && implicitCurve) {
-return; // slow
-
-// Create hoverGlider if it doesn't exist
-if (!hoverGlider) {
-    hoverGlider = board.create('glider', [x, y, implicitCurve], {
-        size: 4,
-        color: 'red',
-        fixed: true,
-        face: 'o',
-        highlight: false,
-        showInfobox: false
-    });
-    hoverLabel = board.create('text', [0, 0, ''], {
-        anchor: hoverGlider,
-        anchorX: 'middle',
-        anchorY: 'bottom',
-        cssStyle: "margin-bottom: 20px",
-        fixed: true,
-        highlight: false,
-        showInfobox: false
-    });
-} else {
-    hoverGlider.moveTo([x, y], 0);
-}
-
-const dx = x - hoverGlider.X();
-const dy = y - hoverGlider.Y();
-const dist = Math.hypot(dx, dy);
-
-if (dist < threshold) {
-    hoverGlider.show();
-    hoverLabel.setText(`(${hoverGlider.X().toFixed(2)}, ${hoverGlider.Y().toFixed(2)})`);
-    hoverLabel.show();
-}
-} else if (!isImplicit && functionGraph) {
-    const scope = { ...currentParameterValues, x };
-    const fx = compiledExpression.evaluate(scope);
-    
-    if (fx !== null && !isNaN(fx) && typeof fx === 'number') {
-        const dist = Math.abs(y - fx);
-        if (dist < threshold) {
-            nearestPoint = [x, fx];
         }
-    }
 
-    if (nearestPoint) {
-        if (!hoverDot) {
-            hoverDot = board.create('point', nearestPoint, {
-                size: 4,
-                color: 'red',
-                fixed: true,
-                face: 'o',
-                highlight: false,
-                showInfobox: false
+        const bbox = this.board.getBoundingBox(); 
+        const xMin = bbox[0]; 
+        const xMax = bbox[2]; 
+        const yMin = bbox[3]; 
+        const yMax = bbox[1]; 
+
+        if (this.isImplicit) {
+
+            const scope = {};
+            Object.keys(this.currentParameterValues).forEach(p => {
+                scope[p] = this.currentParameterValues[p];
             });
-            hoverLabel = board.create('text', [0, 0, ''], {
-                anchor: hoverDot,
-                anchorX: 'middle',
-                anchorY: 'bottom',
-                fixed: true,
-                highlight: false,
-                cssStyle: "margin-bottom: 20px",
-                showInfobox: false
-            });
-        } else {
-            hoverDot.setPosition(JXG.COORDS_BY_USER, nearestPoint);
-        }
-        hoverDot.show();
 
-        hoverLabel.setText(`f(${nearestPoint[0].toFixed(2)}) = ${(nearestPoint[1].toFixed(2) ?? 0)}`);
-        hoverLabel.show();
-    } else {
-        if (hoverDot) hoverDot.hide();
-        if (hoverLabel) hoverLabel.hide();
-    }
-} else {
-    if (hoverDot) hoverDot.hide();
-    if (hoverGlider) hoverGlider.hide();
-    if (hoverLabel) hoverLabel.hide();
-}
-    board.update();
-}
+            const f = (x, y) => { 
+                scope.x = x;
+                scope.y = y;
+                try {
+                    const result = this.compiledExpression.evaluate(scope);
+                    return result;
+                } catch {
+                    return Number.NaN; 
+                }
+            }; 
 
+            if (this.implicitCurve) { 
+                this.implicitCurve.update(); 
+            } else { 
 
-function scheduleUpdateGraph() { 
-    chartIgnoreUpdates = true; 
-    updateFunctionGraph(); 
-} 
-
-function updateFunctionGraph(recompile = true) { 
-    const expr = storedExpr; 
-    if (expr === '') { 
-        alert('Výraz nesmí být prázdný.'); 
-        return; 
-    } 
-
-    compileAndPlot(expr, recompile);
-} 
-
-function compileAndPlot(expr, recompile = true) { 
-
-    if (recompile) {
-        try { 
-        compiledExpression = window.math.compile(expr); 
-        } catch (error) { 
-            console.log(error); 
-            alert('Chyba ve výrazu: ' + error.message); 
-            return; 
-        } 
-    }
-
-    const bbox = board.getBoundingBox(); 
-    const xMin = bbox[0]; 
-    const xMax = bbox[2]; 
-    const yMin = bbox[3]; 
-    const yMax = bbox[1]; 
-
-    if (isImplicit) {
-
-        const scope = {};
-        Object.keys(currentParameterValues).forEach(p => {
-            scope[p] = currentParameterValues[p];
-        });
-
-        const f = function(x, y) { 
-            scope.x = x;
-            scope.y = y;
-            try {
-                const result = compiledExpression.evaluate(scope);
-                return result;
-            } catch {
-                return Number.NaN; 
+                this.implicitCurve = this.board.create('implicitcurve', [f], { 
+                    strokeColor: 'blue', 
+                    xmin: xMin, 
+                    xmax: xMax, 
+                    ymin: yMin, 
+                    ymax: yMax,
+                    grid: true,
+                    resolution_inner: 50,
+                    resolution_outer: 50
+                }); 
             }
-        }; 
 
-        if (implicitCurve) { 
-            implicitCurve.update(); 
+            if (this.functionGraph) {
+                this.board.removeObject(this.functionGraph);
+                this.functionGraph = null;
+            }
+
+            this.board.update(); 
         } else { 
 
-            implicitCurve = board.create('implicitcurve', [f], { 
-                strokeColor: 'blue', 
-                xmin: xMin, 
-                xmax: xMax, 
-                ymin: yMin, 
-                ymax: yMax,
-                grid: true,
-                resolution_inner: 50,
-                resolution_outer: 50
-            }); 
-        }
+            const f = (x) => { 
+                const scope = { x }; 
+                Object.keys(this.currentParameterValues).forEach(p => { 
+                    scope[p] = this.currentParameterValues[p]; 
+                }); 
+                try { 
+                    return this.compiledExpression.evaluate(scope); 
+                } catch { 
+                    return null; 
+                } 
+            }; 
 
-        if (functionGraph) {
-            board.removeObject(functionGraph);
-            functionGraph = null;
-        }
-
-        board.update(); 
-    } else { 
-
-        const f = function(x) { 
-            const scope = { x }; 
-            Object.keys(currentParameterValues).forEach(p => { 
-                scope[p] = currentParameterValues[p]; 
-            }); 
-            try { 
-                return compiledExpression.evaluate(scope); 
-            } catch { 
-                return null; 
+            if (this.functionGraph) { 
+                this.board.removeObject(this.functionGraph); 
             } 
-        }; 
 
-        if (functionGraph) { 
-            board.removeObject(functionGraph); 
+            if (this.implicitCurve) {
+                this.board.removeObject(this.implicitCurve);
+                this.implicitCurve = null;
+            }
+
+            this.functionGraph = this.board.create('functiongraph', [f, xMin, xMax], { 
+                strokeColor: 'blue'
+            }); 
+            this.board.update(); 
         } 
 
-        if (implicitCurve) {
-            board.removeObject(implicitCurve);
-            implicitCurve = null;
-        }
-
-        functionGraph = board.create('functiongraph', [f, xMin, xMax], { 
-            strokeColor: 'blue'
-        }); 
-        board.update(); 
+        this.chartIgnoreUpdates = false; 
     } 
 
-    chartIgnoreUpdates = false; 
-} 
-
-function updateEquation() { 
-    let expr = storedExpr; 
-    if (expr === '') { 
-        alert('Výraz nesmí být prázdný.'); 
-        return; 
-    } 
-
-    let isEquation = false; 
-
-    if (expr.includes('=')) { 
-        const parts = expr.split('='); 
-        if (parts.length !== 2) { 
-            alert('Rovnice musí obsahovat pouze jeden "=" znak.'); 
+    updateEquation(knownPars = [], forceRefresh = false) { 
+        let expr = this.storedExpr; 
+        if (expr === '') { 
+            alert('Výraz nesmí být prázdný.'); 
             return; 
         } 
-        const left = parts[0].trim(); 
-        const right = parts[1].trim(); 
-        expr = `(${left}) - (${right})`; 
-        isEquation = true; 
+
+        let isEquation = false; 
+
+        if (expr.includes('=')) { 
+            const parts = expr.split('='); 
+            if (parts.length !== 2) { 
+                alert('Rovnice musí obsahovat pouze jeden "=" znak.'); 
+                return; 
+            } 
+            const left = parts[0].trim(); 
+            const right = parts[1].trim(); 
+            expr = `(${left}) - (${right})`; 
+            isEquation = true; 
+        } 
+
+        this.storedExpr = expr;
+        this.isImplicit = expr.includes('y') || isEquation;
+
+        const params = this.detectParameters(expr); 
+
+        params.forEach(param => { 
+
+            let matchingKnownParam = knownPars.find(x => x.name === param);
+
+            if (forceRefresh || !this.currentParameterConfigs[param]) { 
+                this.currentParameterConfigs[param] = { 
+                    label: param, 
+                    min: matchingKnownParam?.min || -5, 
+                    max: matchingKnownParam?.max || 5, 
+                    default: matchingKnownParam?.value || 1 
+                }; 
+                this.currentParameterValues[param] = matchingKnownParam?.value || 1; 
+            }
+        }); 
+
+        Object.keys(this.currentParameterConfigs).forEach(param => { 
+            if (!params.includes(param)) { 
+                delete this.currentParameterConfigs[param]; 
+                delete this.currentParameterValues[param]; 
+            } 
+        }); 
+
+        this.createParameterControls(params); 
+        this.initializeBoard(); 
+        this.updateFunctionGraph(); 
     } 
 
-    storedExpr = expr;
-    console.log(storedExpr);
+    storeExpr(expr) {
+        this.storedExpr = expr.trim();
+        this.storedExpr = this.storedExpr.replaceAll("–", '-');
+        return this.storedExpr;
+    }
 
-    isImplicit = expr.includes('y') || isEquation;
+    getInputExpr() {
+        return document.getElementById('expression').value;
+    }
 
-    const params = detectParameters(expr); 
+    init() { 
+        const exampleExpression = 'a * sin(b * x) + c'; 
 
-    params.forEach(param => { 
-        if (!currentParameterConfigs[param]) { 
-            currentParameterConfigs[param] = { 
-                label: param, 
-                min: -5, 
-                max: 5, 
-                default: 1 
-            }; 
-            currentParameterValues[param] = 1; 
-        } 
-    }); 
+        document.getElementById('expression').value = exampleExpression; 
+        this.storeExpr(this.getInputExpr());
 
-    Object.keys(currentParameterConfigs).forEach(param => { 
-        if (!params.includes(param)) { 
-            delete currentParameterConfigs[param]; 
-            delete currentParameterValues[param]; 
-        } 
-    }); 
+        const params = this.detectParameters(exampleExpression); 
+        params.forEach(param => { 
+            this.currentParameterConfigs[param] = { label: param, min: -5, max: 5, default: 1 }; 
+            this.currentParameterValues[param] = 1; 
+        }); 
+        this.createParameterControls(params); 
+        this.initializeBoard(); 
+        this.updateFunctionGraph(); 
 
-    createParameterControls(params); 
-    initializeBoard(); 
-    updateFunctionGraph(); 
-} 
+        // Bind Parse Button
+        document.getElementById('parseButton').addEventListener('click', () => { 
+            this.storeExpr(this.getInputExpr());
+            this.updateEquation(); 
+        }); 
+    }
 
-document.getElementById('parseButton').addEventListener('click', () => { 
-    storeExpr();
-    updateEquation(); 
-}); 
-
-function storeExpr() {
-    storedExpr = document.getElementById('expression').value.trim(); 
-    storedExpr = storedExpr.replaceAll("–", '-');
+    plot(expression, pars = []) {
+        let stored = this.storeExpr(expression);
+        document.getElementById('expression').value = stored;
+        this.updateEquation(pars, true); 
+    }
 }
 
-window.onload = () => { 
-    const exampleExpression = 'a * sin(b * x) + c'; 
-
-    document.getElementById('expression').value = exampleExpression; 
-    storeExpr();
-
-    const params = detectParameters(exampleExpression); 
-    params.forEach(param => { 
-        currentParameterConfigs[param] = { label: param, min: -5, max: 5, default: 1 }; 
-        currentParameterValues[param] = 1; 
-    }); 
-    createParameterControls(params); 
-    initializeBoard(); 
-    updateFunctionGraph(); 
-}; 
+var plotter = new FunctionGrapher();
+plotter.init();
