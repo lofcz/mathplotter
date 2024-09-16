@@ -85,6 +85,31 @@ class MathPlotter {
         })}`;
     }    
 
+    prepareExpression(expression) {
+        return this.convertAliases(expression);
+    }
+
+    convertAliases(expression) {
+        const aliasMappings = {
+            'ln': 'log',
+            'arcsin': 'asin',
+            'arccos': 'acos',
+            'arctan': 'atan',
+            'arctg': 'atan',
+            'tg': 'tan',
+            'cotg': 'cot',
+            'cosec': 'csc',
+            'sign': 'sgn'
+        };
+    
+        for (const [alias, func] of Object.entries(aliasMappings)) {
+            const regex = new RegExp(`\\b${alias}\\b`, 'g');
+            expression = expression.replace(regex, func);
+        }
+    
+        return expression;
+    }
+    
     detectParameters(expression) { 
         const varRegex = /\b[a-zA-Z_]\w*\b/g; 
         const reserved = [
@@ -769,7 +794,7 @@ class MathPlotter {
 
             const newFunction = {
                 id: functionId,
-                expression: storedExpr,
+                expression: this.prepareExpression(storedExpr),
                 originalExpression: funcObj.fn,
                 isImplicit: isImplicit,
                 compiledExpression: null,
