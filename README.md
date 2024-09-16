@@ -53,7 +53,8 @@ Methods in the following table can be called on the `plotter` instance from the 
 | Function | Description | Call
 |--------|-------|-------|
 | `plot` | Plots one or more functions | One:`plot("x")'`<br/>Multiple:`plot("a * sin(b * x) + c;a * cos(b * x) + c;tanh(x);(x^2 + y^2 – 1)^3 = x^2 y^3")`<br/>Param hints:`plot([{fn: "a * sin(b * x) + c", pars: [{ name: "a", value: 5 }, { name: "c", value: 1 }]}, {fn: "x + 2"}])` |
-| `save` | Saves and downloads the plot in `SVG` format. | `save()` |
+| `save` | Saves and downloads the plot in `svg` format. | `save()` |
+| `saveBitmap` | Saves and downloads the plot in `jpg`/`png` format. | `await saveBitmap("jpeg")` |
 | `destroy` | Removes all event handlers, destroys elements created by MathPlotter, and frees memory. | `destroy()` |
 
 ## Static API
@@ -62,7 +63,8 @@ Unlike the methods above, the following methods are called on `MathPlotter` stat
 
 | Function | Description | Call
 |--------|-------|-------|
-| `Fire` | Creates a headless instance, plots the given expressions, and destroys the instance immediately. Returns `SVG` screenshot of the plot. | `Fire("ln(x)")` |
+| `Fire` | Creates a headless instance, plots the given expressions, and destroys the instance immediately. Returns `svg` screenshot of the plot. | `Fire("ln(x)")` |
+| `FireBitmap` | Creates a headless instance, plots the given expressions, and destroys the instance immediately. Returns `jpeg`/`png` screenshot of the plot. | `await FireBitmap("ln(x)", "jpeg")` |
 
 ## Build
 
