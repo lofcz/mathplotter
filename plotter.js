@@ -481,20 +481,32 @@ class MathPlotter {
         } else {
             if (currentFunction.graph) {
 
-                //this.board.removeObject(currentFunction.graph);
-
+          
                 if (forceRecomutePoints || !(currentFunction.prevXMin == xMin && currentFunction.prevXMax === xMax)) {
            
-                    const samples = this.adaptiveSampling(f, xMin, xMax, 1000); // 1000 je maximální počet bodů
-                    const newDataX = samples.map(sample => sample[0]);
-                    const newDataY = samples.map(sample => sample[1]);
+                    currentFunction.graph.Y = f;  // Aktualizace funkce
+                    currentFunction.graph.minX = function() { return xMin; };
+                    currentFunction.graph.maxX = function() { return xMax; };
 
-                    currentFunction.graph.dataX = newDataX;
-                    currentFunction.graph.dataY = newDataY;
+                    /*if (true) {
+                        this.board.removeObject(currentFunction.graph);
 
-                    currentFunction.graph.updateRenderer();
-                    currentFunction.prevXMin = xMin;
-                    currentFunction.prevXMax = xMax;
+                        currentFunction.graph = this.board.create('functiongraph', [f, xMin, xMax], {
+                            strokeColor: currentFunction.color
+                        });
+                    }
+                    else {
+                        const samples = this.adaptiveSampling(f, xMin, xMax, 1000); // 1000 je maximální počet bodů
+                        const newDataX = samples.map(sample => sample[0]);
+                        const newDataY = samples.map(sample => sample[1]);
+    
+                        currentFunction.graph.dataX = newDataX;
+                        currentFunction.graph.dataY = newDataY;
+    
+                        currentFunction.graph.updateRenderer();
+                        currentFunction.prevXMin = xMin;
+                        currentFunction.prevXMax = xMax;
+                    }*/
                 }
             }
             else {
