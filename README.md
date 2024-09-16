@@ -14,23 +14,41 @@ Poor man's Desmos.
 
 ## Getting started
 
-Load `jsxgraphcore.js`, `math.js` and `plotter.js`:
+MathPlotter is distributed as `umd` package. Load `jsxgraphcore.js`, `math.js` and `plotter.js`:
 
 ```html
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsxgraph@1.9.2/distrib/jsxgraphcore.min.js.js"></script> 
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/13.1.1/math.min.js"></script> 
 <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/jsxgraph/1.9.2/jsxgraph.css" />
-<script type="text/javascript" src="plotter.js"></script> 
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathplotter/plotter.min.js"></script> 
+```
+
+Setup HTML:
+
+```
+<div id="plotterElement"></div>
 ```
 
 Instantiate `MathPlotter`:
 
 ```js
-var plotter = new MathPlotter();
+var plotter = new MathPlotter("plotterElement");
 plotter.init();
 ```
 
+## Config
+
+Pass config options as a second argument to the constructor of `MathPlotter`:
+
+```js
+var plotter = new MathPlotter("plotterElement", {
+  // config options
+});
+```
+
 ## API
+
+Methods in the following table can be called on the `plotter` instance from the examples above.
 
 | Function | Description | Call
 |--------|-------|-------|
@@ -40,7 +58,7 @@ plotter.init();
 
 ## Build
 
-To build `plotter.js`:
+To build `plotter.min.js` & `plotter.css`:
 
 ```js
 npm i & npm run build
