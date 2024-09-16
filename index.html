@@ -11,15 +11,18 @@
 <body> 
     <h2>MathPlotter</h2> 
     <div id="plotterElement"></div> 
-    <script type="text/javascript" src="plotter.js"></script>
-    <script>
-        var plotter = new MathPlotter("plotterElement", {
-            plot: {
-                // width: 300,
-                // height: 300
-            }
+    <script type="module">
+        import('./plotter.js').then(({ MathPlotter }) => {
+            var plotter = new MathPlotter("plotterElement", {
+                plot: {
+                    // width: 300,
+                    // height: 300
+                }
+            });
+            plotter.init();
+        }).catch(error => {
+            console.error("Failed to load the module:", error);
         });
-        plotter.init();
     </script>
 </body> 
 </html>
