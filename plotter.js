@@ -342,6 +342,7 @@ class FunctionGrapher {
         const coords = this.board.getUsrCoordsOfMouse(e);
         const x = coords[0], y = coords[1];
         const threshold = 0.5;
+        let anyToggled = false;
     
         // Skrýt všechny hover objekty před kontrolou
         this.functions.forEach(func => {
@@ -389,24 +390,27 @@ class FunctionGrapher {
                         } else {
                             currentFunction.hoverDot.setPosition(JXG.COORDS_BY_USER, nearestPoint);
                         }
+
                         currentFunction.hoverDot.show();
-    
                         currentFunction.hoverLabel.setText(`f(${nearestPoint[0].toFixed(2)}) = ${(nearestPoint[1].toFixed(2) ?? 0)}`);
                         currentFunction.hoverLabel.show();
+                        anyToggled = true;
                     }
                 }
             }
         });
     
-        this.board.update();
+        if (anyToggled) {
+            this.board.update();
+        }
     }
 
     scheduleUpdateGraph() { 
         this.chartIgnoreUpdates = true; 
-        this.updateFunctionGraph(false); 
+        this.updateFunctionGraph(false, true); 
     } 
 
-    updateFunctionGraph(recompile = true) {
+    updateFunctionGraph(recompile = true, forceRecomutePoints = false) {
 
         const bbox = this.board.getBoundingBox();
         const xMin = bbox[0];
@@ -420,13 +424,14 @@ class FunctionGrapher {
                 xMax: xMax,
                 yMin: yMin,
                 yMax: yMax
-            });
+            }, forceRecomutePoints);
         });
-        this.chartIgnoreUpdates = false;
+        this.chartIgnoreUpdates = true;
         this.board.update();
+        this.chartIgnoreUpdates = false;
     }
 
-    compileAndPlotFunction(currentFunction, recompile = true, bbox = {}) {
+    compileAndPlotFunction(currentFunction, recompile = true, bbox = {}, forceRecomutePoints = false) {
         if (recompile || !currentFunction.compiledExpression) {
             try {
                 currentFunction.compiledExpression = window.math.compile(currentFunction.expression);
@@ -475,15 +480,22 @@ class FunctionGrapher {
             }
         } else {
             if (currentFunction.graph) {
-                currentFunction.graph.dataX = [];
-                currentFunction.graph.dataY = [];
-                
-                for (let x = xMin; x <= xMax; x += 0.1) {
-                    currentFunction.graph.dataX.push(x);
-                    currentFunction.graph.dataY.push(f(x));
+
+                //this.board.removeObject(currentFunction.graph);
+
+                if (forceRecomutePoints || !(currentFunction.prevXMin == xMin && currentFunction.prevXMax === xMax)) {
+           
+                    const samples = this.adaptiveSampling(f, xMin, xMax, 1000); // 1000 je maximální počet bodů
+                    const newDataX = samples.map(sample => sample[0]);
+                    const newDataY = samples.map(sample => sample[1]);
+
+                    currentFunction.graph.dataX = newDataX;
+                    currentFunction.graph.dataY = newDataY;
+
+                    currentFunction.graph.updateRenderer();
+                    currentFunction.prevXMin = xMin;
+                    currentFunction.prevXMax = xMax;
                 }
-                
-                currentFunction.graph.updateRenderer();
             }
             else {
                 currentFunction.graph = this.board.create('functiongraph', [f, xMin, xMax], {
@@ -492,6 +504,39 @@ class FunctionGrapher {
             }
         }
     }
+
+    adaptiveSampling(f, xMin, xMax, maxPoints) {
+        const samples = [];
+        const stack = [[xMin, xMax]];
+        
+        while (stack.length > 0 && samples.length < maxPoints) {
+            const [a, b] = stack.pop();
+            const mid = (a + b) / 2;
+            const fa = f(a);
+            const fb = f(b);
+            const fmid = f(mid);
+            
+            if (Math.abs((fa + fb) / 2 - fmid) > 0.1 || (b - a) > (xMax - xMin) / 100) {
+                stack.push([a, mid]);
+                stack.push([mid, b]);
+            } else {
+                samples.push([a, fa]);
+                if (samples.length === maxPoints - 1) {
+                    samples.push([b, fb]);
+                    break;
+                }
+            }
+        }
+        
+        if (samples.length < maxPoints) {
+            samples.push([xMax, f(xMax)]);
+        }
+        
+        // Seřazení vzorků podle x hodnoty
+        samples.sort((a, b) => a[0] - b[0]);
+        return samples;
+    }
+    
 
     storeExpr(expr) {
         let stored = expr.trim();
@@ -753,6 +798,3 @@ class FunctionGrapher {
     }
 
 }
-
-var plotter = new FunctionGrapher();
-plotter.init();
