@@ -1012,7 +1012,7 @@ class MathPlotter {
                 // Vykreslení SVG na canvas
                 ctx.drawImage(img, 0, 0);
         
-                let finalData = canvas.toDataURL(format === "jpeg" ? 'image/jpeg' : "image/png");
+                let finalData = canvas.toDataURL(format === "jpeg" || format === "jpg" ? 'image/jpeg' : "image/png");
 
                 if (downloadName) {
                     var link = document.createElement('a');
