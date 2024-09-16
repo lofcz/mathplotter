@@ -1,4 +1,4 @@
-class FunctionGrapher {
+class MathPlotter {
     constructor() {
         this.board = null; 
         this.functionGraph = null; 
