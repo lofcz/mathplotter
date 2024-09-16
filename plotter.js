@@ -54,6 +54,44 @@ class MathPlotter {
         this.isThrottled = false;
     }
 
+    static Debug = false;
+
+    static Iiid() {
+        return `_${'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        })}`;
+    }
+
+    static Fire(expressions) {
+
+        if (!document.body) {
+            return;
+        }
+
+        let tempEl = document.createElement('div');
+        tempEl.id = MathPlotter.Iiid();
+        document.body.appendChild(tempEl);
+
+        let inst = new MathPlotter(tempEl.id, {
+            ui: {
+                headless: true
+            }
+        });
+        inst.init();
+        inst.plot(expressions);
+        var data = inst.save();
+        inst.destroy();
+
+        if (MathPlotter.Debug) {
+            var imgEl = document.createElement("div");
+            imgEl.innerHTML = data;
+            document.body.appendChild(imgEl);
+        }
+
+        return data;
+    }
+
     deepMerge(target, source) {
         const isObject = (obj) => obj && typeof obj === 'object';
       
@@ -79,10 +117,7 @@ class MathPlotter {
 
     // dom-friendly guid
     iiid() {
-        return `_${'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        })}`;
+        return MathPlotter.Iiid();
     }    
 
     prepareExpression(expression) {
@@ -703,10 +738,12 @@ class MathPlotter {
 
     init() {
 
+        let plotId = this.iiid();
+
         if (!this.headless()) {
 
-            let plotId = this.iiid();
             let fnInputId = this.iiid();
+            let parseButtonId = this.iiid();
 
             this.dom.controlsWrapper = document.createElement('div');
             this.dom.controlsWrapper.innerHTML = `
@@ -714,7 +751,7 @@ class MathPlotter {
                     <div class="control-group"> 
                         <label for="${fnInputId}">Expression:</label> 
                         <input type="text" id="${fnInputId}" value="${this.sourceExpression}"> 
-                        <button id="parseButton">Parse</button> 
+                        <button id="${parseButtonId}">Parse</button> 
                     </div> 
                     <div id="parameters"></div> 
                 </div> 
@@ -724,9 +761,21 @@ class MathPlotter {
             this.dom.rootEl.appendChild(this.dom.controlsWrapper);
             this.dom.fnInputEl = this.dom.rootEl.querySelector(`#${fnInputId}`);
             this.dom.plotEl = this.dom.rootEl.querySelector(`#${plotId}`);
+            this.dom.parseButton = this.dom.rootEl.querySelector(`#${parseButtonId}`);
 
             // Bind Parse Button
-            document.getElementById('parseButton')?.addEventListener('click', this.parseButtonHandler);
+            this.dom.parseButton?.addEventListener('click', this.parseButtonHandler);
+        }
+        else {
+
+            this.dom.controlsWrapper = document.createElement('div');
+            this.dom.controlsWrapper.style.display = "none";
+            this.dom.controlsWrapper.innerHTML = ` 
+                <div id="${plotId}" style='${(this.config.plot.width ? `width: ${this.config.plot.width}px;` : "")}${(this.config.plot.height ? `height: ${this.config.plot.height}px;` : "")}' class='mathPlotterRoot ${(!this.config.plot.width && !this.config.plot.height ? "mathPlotterRootSizeNotSet" : "")}'></div>
+            `;
+
+            this.dom.rootEl.appendChild(this.dom.controlsWrapper);
+            this.dom.plotEl = this.dom.rootEl.querySelector(`#${plotId}`);
         }
 
         const input = this.getInputExpr();
@@ -872,14 +921,7 @@ class MathPlotter {
                 }
             });
 
-            // Remove the board element from DOM
-            const boardElement = document.getElementById('jxgbox');
-            if (boardElement) {
-                boardElement.remove();
-            }
-
-
-            const controlsElement = document.querySelector(".controls");
+            const controlsElement = this.dom.controlsWrapper;
 
             if (controlsElement) {
                 controlsElement.remove();
@@ -891,7 +933,7 @@ class MathPlotter {
         }
 
         // Remove event listeners from parseButton
-        const parseButton = document.getElementById('parseButton');
+        const parseButton = this.dom.parseButton;
         if (parseButton && this.parseButtonHandler) {
             parseButton.removeEventListener('click', this.parseButtonHandler);
         }
