@@ -6,83 +6,19 @@
     <script type="text/javascript" src="https://lancraft.cz/tmp/jsxgraphcore.js"></script> 
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/13.1.1/math.min.js"></script> 
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/jsxgraph/1.9.2/jsxgraph.css" /> 
-    <style> 
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-        } 
-        #jxgbox { 
-            width: 800px; 
-            height: 800px; 
-            margin: 20px auto; 
-            border: 1px solid #ccc; 
-            position: relative; 
-        } 
-        .controls { 
-            max-width: 800px; 
-            margin: 0 auto; 
-        } 
-        .control-group { 
-            margin-bottom: 10px; 
-            display: flex; 
-            align-items: center; 
-            flex-wrap: wrap; 
-        } 
-        .control-group label { 
-            margin-right: 5px; 
-            min-width: 120px; 
-            flex: 1 1 120px; 
-        } 
-        .control-group input[type="text"],  
-        .control-group input[type="number"] { 
-            margin-right: 10px; 
-            padding: 5px; 
-            width: 100px; 
-            flex: 1 1 100px; 
-        } 
-        .control-group span { 
-            margin-right: 10px; 
-            flex: 0 0 auto; 
-        } 
-        .slider-group { 
-            display: flex; 
-            align-items: center; 
-            margin-bottom: 10px; 
-            flex-wrap: wrap; 
-        } 
-        .slider-group label { 
-            margin-right: 10px; 
-            min-width: 100px; 
-            flex: 1 1 100px; 
-        } 
-        .slider-group input[type="range"] { 
-            margin-right: 10px; 
-            flex: 1 1 200px; 
-        } 
-        .slider-value { 
-            width: 60px; 
-            text-align: right; 
-        } 
-        button { 
-            padding: 7px 15px; 
-            margin-top: 10px; 
-        } 
-    </style> 
+    <link rel="stylesheet" type="text/css" href="plotter.scss" /> 
 </head> 
 <body> 
     <h2>MathPlotter</h2> 
-    <div class="controls"> 
-        <div class="control-group"> 
-            <label for="expression">Expression:</label> 
-            <input type="text" id="expression" value="a * sin(b * x) + c"> 
-            <button id="parseButton">Parse</button> 
-        </div> 
-        <div id="parameters"></div> 
-    </div> 
-    <div id="jxgbox"></div> 
+    <div id="plotterElement"></div> 
     <script type="text/javascript" src="plotter.js"></script>
     <script>
-        var plotter = new MathPlotter();
+        var plotter = new MathPlotter("plotterElement", {
+            plot: {
+                // width: 300,
+                // height: 300
+            }
+        });
         plotter.init();
     </script>
 </body> 

@@ -1,0 +1,67 @@
+.mathPlotter {
+
+}
+
+.mathPlotterRootSizeNotSet {
+    width: 800px;
+    height: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#jxgbox { 
+    width: 800px; 
+    height: 800px; 
+    margin: 20px auto; 
+    border: 1px solid #ccc; 
+    position: relative; 
+} 
+.controls { 
+    max-width: 800px; 
+    margin: 0 auto; 
+} 
+.control-group { 
+    margin-bottom: 10px; 
+    display: flex; 
+    align-items: center; 
+    flex-wrap: wrap; 
+} 
+.control-group label { 
+    margin-right: 5px; 
+    min-width: 120px; 
+    flex: 1 1 120px; 
+} 
+.control-group input[type="text"],  
+.control-group input[type="number"] { 
+    margin-right: 10px; 
+    padding: 5px; 
+    width: 100px; 
+    flex: 1 1 100px; 
+} 
+.control-group span { 
+    margin-right: 10px; 
+    flex: 0 0 auto; 
+} 
+.slider-group { 
+    display: flex; 
+    align-items: center; 
+    margin-bottom: 10px; 
+    flex-wrap: wrap; 
+} 
+.slider-group label { 
+    margin-right: 10px; 
+    min-width: 100px; 
+    flex: 1 1 100px; 
+} 
+.slider-group input[type="range"] { 
+    margin-right: 10px; 
+    flex: 1 1 200px; 
+} 
+.slider-value { 
+    width: 60px; 
+    text-align: right; 
+} 
+button { 
+    padding: 7px 15px; 
+    margin-top: 10px; 
+} 

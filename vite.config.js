@@ -31,6 +31,13 @@ function addHeaderPlugin() {
 }
 
 export default defineConfig({
+    css: {
+      preprocessorOptions: {
+        scss: {
+
+        }
+      }
+    },
     build: {
       manifest: true,
       rollupOptions: {

@@ -1,5 +1,18 @@
 class MathPlotter {
-    constructor() {
+    constructor(elId, config = {}) {
+
+        const defaultConfig = {
+            plot: {
+                width: null,
+                height: null
+            },
+            ui: {
+                headless: false,
+                fnInput: true,
+                paramControls: true
+            }
+        }
+
         this.board = null; 
         this.functionGraph = null; 
         this.implicitCurve = null; 
@@ -15,6 +28,24 @@ class MathPlotter {
         this.colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'cyan', 'magenta'];
         this.parameterConfigs = {};
         this.parameterValues = {};  
+        this.config = Object.assign({}, defaultConfig, config);
+        this.dom = {
+            controlsWrapper: null,
+            parseButton: null,
+            plotEl: null,
+            rootEl: null
+        }
+
+        for (const [key, value] of Object.entries(this.config)) {
+            this[key] = value;
+        }
+
+        this.dom.rootEl = document.getElementById(elId);
+
+        if (!this.dom.rootEl) {
+            console.log(`element with id '${elId}' not found`);
+            return;
+        }
 
         // Bind callbacks to ensure 'this' refers to the class instance
         this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -25,8 +56,11 @@ class MathPlotter {
     }
 
     // Metoda k vytvoření unikátního ID pro každou funkci
-    generateFunctionId() {
-        return 'fn_' + Math.random().toString(36).slice(2, 11);
+    iiid() {
+        return `_${'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        })}`;
     }    
 
     detectParameters(expression) { 
@@ -85,7 +119,21 @@ class MathPlotter {
         this.updateFunctionGraph(); 
     } 
 
+    uiCanRender(expr) {
+        return !this.config.ui.headless && expr;
+    }
+
+    headless() {
+        return this.config.ui.headless;
+    }
+
     createParameterControls() {
+
+        if (this.headless())
+        {
+            return;
+        }
+
         const container = document.getElementById('parameters');
         container.innerHTML = ''; // Vyčistit předchozí parametry
 
@@ -93,187 +141,189 @@ class MathPlotter {
 
         if (params.length === 0) return;
 
-        params.forEach(param => {
-            const config = this.parameterConfigs[param];
-
-            // Control Group for Parameter Configuration
-            const group = document.createElement('div');
-            group.className = 'control-group';
-
-            // Label Input
-            const label = document.createElement('label');
-            label.innerText = `Parametr "${param}":`;
-            label.htmlFor = `label_${param}`;
-            group.appendChild(label);
-
-            const labelInput = document.createElement('input');
-            labelInput.type = 'text';
-            labelInput.id = `label_${param}`;
-            labelInput.placeholder = 'Popisek';
-            labelInput.value = config.label;
-            group.appendChild(labelInput);
-
-            // Min Input
-            const minLabel = document.createElement('span');
-            minLabel.innerText = 'Min:';
-            minLabel.htmlFor = `min_${param}`;
-            group.appendChild(minLabel);
-
-            const minInput = document.createElement('input');
-            minInput.type = 'number';
-            minInput.id = `min_${param}`;
-            minInput.value = config.min;
-            group.appendChild(minInput);
-
-            // Max Input
-            const maxLabel = document.createElement('span');
-            maxLabel.innerText = 'Max:';
-            maxLabel.htmlFor = `max_${param}`;
-            group.appendChild(maxLabel);
-
-            const maxInput = document.createElement('input');
-            maxInput.type = 'number';
-            maxInput.id = `max_${param}`;
-            maxInput.value = config.max;
-            group.appendChild(maxInput);
-
-            // Default Input
-            const defLabel = document.createElement('span');
-            defLabel.innerText = 'Default:';
-            defLabel.htmlFor = `default_${param}`;
-            group.appendChild(defLabel);
-
-            const defInput = document.createElement('input');
-            defInput.type = 'number';
-            defInput.id = `default_${param}`;
-            defInput.value = config.default;
-            group.appendChild(defInput);
-
-            // Event Listeners for Config Inputs
-            labelInput.addEventListener('input', () => {
-                config.label = labelInput.value.trim() !== '' ? labelInput.value.trim() : param;
-
-                const sliderLabel = document.getElementById(`slider_label_${param}`);
-                if (sliderLabel) {
-                    sliderLabel.innerText = config.label + ':';
-                }
-                this.scheduleUpdateGraph();
-            });
-
-            minInput.addEventListener('input', () => {
-                let newMin = parseFloat(minInput.value);
-                newMin = isNaN(newMin) ? -5 : newMin;
-                config.min = newMin;
-
-                if (this.parameterValues[param] < config.min) {
-                    this.parameterValues[param] = config.min;
-                    defInput.value = this.parameterValues[param];
+        if (this.config.ui.paramControls) {
+            params.forEach(param => {
+                const config = this.parameterConfigs[param];
+    
+                // Control Group for Parameter Configuration
+                const group = document.createElement('div');
+                group.className = 'control-group';
+    
+                // Label Input
+                const label = document.createElement('label');
+                label.innerText = `Parametr "${param}":`;
+                label.htmlFor = `label_${param}`;
+                group.appendChild(label);
+    
+                const labelInput = document.createElement('input');
+                labelInput.type = 'text';
+                labelInput.id = `label_${param}`;
+                labelInput.placeholder = 'Popisek';
+                labelInput.value = config.label;
+                group.appendChild(labelInput);
+    
+                // Min Input
+                const minLabel = document.createElement('span');
+                minLabel.innerText = 'Min:';
+                minLabel.htmlFor = `min_${param}`;
+                group.appendChild(minLabel);
+    
+                const minInput = document.createElement('input');
+                minInput.type = 'number';
+                minInput.id = `min_${param}`;
+                minInput.value = config.min;
+                group.appendChild(minInput);
+    
+                // Max Input
+                const maxLabel = document.createElement('span');
+                maxLabel.innerText = 'Max:';
+                maxLabel.htmlFor = `max_${param}`;
+                group.appendChild(maxLabel);
+    
+                const maxInput = document.createElement('input');
+                maxInput.type = 'number';
+                maxInput.id = `max_${param}`;
+                maxInput.value = config.max;
+                group.appendChild(maxInput);
+    
+                // Default Input
+                const defLabel = document.createElement('span');
+                defLabel.innerText = 'Default:';
+                defLabel.htmlFor = `default_${param}`;
+                group.appendChild(defLabel);
+    
+                const defInput = document.createElement('input');
+                defInput.type = 'number';
+                defInput.id = `default_${param}`;
+                defInput.value = config.default;
+                group.appendChild(defInput);
+    
+                // Event Listeners for Config Inputs
+                labelInput.addEventListener('input', () => {
+                    config.label = labelInput.value.trim() !== '' ? labelInput.value.trim() : param;
+    
+                    const sliderLabel = document.getElementById(`slider_label_${param}`);
+                    if (sliderLabel) {
+                        sliderLabel.innerText = config.label + ':';
+                    }
+                    this.scheduleUpdateGraph();
+                });
+    
+                minInput.addEventListener('input', () => {
+                    let newMin = parseFloat(minInput.value);
+                    newMin = isNaN(newMin) ? -5 : newMin;
+                    config.min = newMin;
+    
+                    if (this.parameterValues[param] < config.min) {
+                        this.parameterValues[param] = config.min;
+                        defInput.value = this.parameterValues[param];
+                        const slider = document.getElementById(`slider_${param}`);
+                        if (slider) {
+                            slider.value = this.parameterValues[param];
+                        }
+                        const sliderVal = document.getElementById(`value_${param}`);
+                        if (sliderVal) {
+                            sliderVal.innerText = this.parameterValues[param].toFixed(2);
+                        }
+                    }
+    
+                    const sliderMin = document.getElementById(`slider_${param}`);
+                    if (sliderMin) {
+                        sliderMin.min = config.min;
+                    }
+                    this.scheduleUpdateGraph();
+                });
+    
+                maxInput.addEventListener('input', () => {
+                    let newMax = parseFloat(maxInput.value);
+                    newMax = isNaN(newMax) ? 5 : newMax;
+                    config.max = newMax;
+    
+                    if (this.parameterValues[param] > config.max) {
+                        this.parameterValues[param] = config.max;
+                        defInput.value = this.parameterValues[param];
+                        const slider = document.getElementById(`slider_${param}`);
+                        if (slider) {
+                            slider.value = this.parameterValues[param];
+                        }
+                        const sliderVal = document.getElementById(`value_${param}`);
+                        if (sliderVal) {
+                            sliderVal.innerText = this.parameterValues[param].toFixed(2);
+                        }
+                    }
+    
+                    const sliderMax = document.getElementById(`slider_${param}`);
+                    if (sliderMax) {
+                        sliderMax.max = config.max;
+                    }
+                    this.scheduleUpdateGraph();
+                });
+    
+                defInput.addEventListener('input', () => {
+                    let newDefault = parseFloat(defInput.value);
+                    newDefault = isNaN(newDefault) ? config.default : newDefault;
+                    newDefault = Math.max(newDefault, config.min);
+                    newDefault = Math.min(newDefault, config.max);
+                    config.default = newDefault;
+                    this.parameterValues[param] = newDefault;
+                    defInput.value = newDefault;
+    
                     const slider = document.getElementById(`slider_${param}`);
                     if (slider) {
-                        slider.value = this.parameterValues[param];
+                        slider.value = newDefault;
                     }
                     const sliderVal = document.getElementById(`value_${param}`);
                     if (sliderVal) {
-                        sliderVal.innerText = this.parameterValues[param].toFixed(2);
+                        sliderVal.innerText = newDefault.toFixed(2);
                     }
-                }
-
-                const sliderMin = document.getElementById(`slider_${param}`);
-                if (sliderMin) {
-                    sliderMin.min = config.min;
-                }
-                this.scheduleUpdateGraph();
+                    this.scheduleUpdateGraph();
+                });
+    
+                group.appendChild(document.createElement('br')); // Oddělení
+    
+                // Slider Group for Parameter
+                const sliderGroup = document.createElement('div');
+                sliderGroup.className = 'slider-group';
+    
+                const sliderLabel = document.createElement('label');
+                sliderLabel.htmlFor = `slider_${param}`;
+                sliderLabel.id = `slider_label_${param}`;
+                sliderLabel.innerText = config.label + ':';
+                sliderGroup.appendChild(sliderLabel);
+    
+                const sliderInput = document.createElement('input');
+                sliderInput.type = 'range';
+                sliderInput.id = `slider_${param}`;
+                sliderInput.min = config.min;
+                sliderInput.max = config.max;
+                sliderInput.step = 0.1;
+                sliderInput.value = this.parameterValues[param];
+                sliderGroup.appendChild(sliderInput);
+    
+                const sliderValue = document.createElement('span');
+                sliderValue.className = 'slider-value';
+                sliderValue.id = `value_${param}`;
+                sliderValue.innerText = this.parameterValues[param].toFixed(2);
+                sliderGroup.appendChild(sliderValue);
+    
+                sliderInput.addEventListener('input', () => {
+                    const val = parseFloat(sliderInput.value);
+                    this.parameterValues[param] = val;
+                    sliderValue.innerText = val.toFixed(2);
+                    this.scheduleUpdateGraph();
+                });
+    
+                group.appendChild(sliderGroup);
+    
+                container.appendChild(group);
             });
-
-            maxInput.addEventListener('input', () => {
-                let newMax = parseFloat(maxInput.value);
-                newMax = isNaN(newMax) ? 5 : newMax;
-                config.max = newMax;
-
-                if (this.parameterValues[param] > config.max) {
-                    this.parameterValues[param] = config.max;
-                    defInput.value = this.parameterValues[param];
-                    const slider = document.getElementById(`slider_${param}`);
-                    if (slider) {
-                        slider.value = this.parameterValues[param];
-                    }
-                    const sliderVal = document.getElementById(`value_${param}`);
-                    if (sliderVal) {
-                        sliderVal.innerText = this.parameterValues[param].toFixed(2);
-                    }
-                }
-
-                const sliderMax = document.getElementById(`slider_${param}`);
-                if (sliderMax) {
-                    sliderMax.max = config.max;
-                }
-                this.scheduleUpdateGraph();
-            });
-
-            defInput.addEventListener('input', () => {
-                let newDefault = parseFloat(defInput.value);
-                newDefault = isNaN(newDefault) ? config.default : newDefault;
-                newDefault = Math.max(newDefault, config.min);
-                newDefault = Math.min(newDefault, config.max);
-                config.default = newDefault;
-                this.parameterValues[param] = newDefault;
-                defInput.value = newDefault;
-
-                const slider = document.getElementById(`slider_${param}`);
-                if (slider) {
-                    slider.value = newDefault;
-                }
-                const sliderVal = document.getElementById(`value_${param}`);
-                if (sliderVal) {
-                    sliderVal.innerText = newDefault.toFixed(2);
-                }
-                this.scheduleUpdateGraph();
-            });
-
-            group.appendChild(document.createElement('br')); // Oddělení
-
-            // Slider Group for Parameter
-            const sliderGroup = document.createElement('div');
-            sliderGroup.className = 'slider-group';
-
-            const sliderLabel = document.createElement('label');
-            sliderLabel.htmlFor = `slider_${param}`;
-            sliderLabel.id = `slider_label_${param}`;
-            sliderLabel.innerText = config.label + ':';
-            sliderGroup.appendChild(sliderLabel);
-
-            const sliderInput = document.createElement('input');
-            sliderInput.type = 'range';
-            sliderInput.id = `slider_${param}`;
-            sliderInput.min = config.min;
-            sliderInput.max = config.max;
-            sliderInput.step = 0.1;
-            sliderInput.value = this.parameterValues[param];
-            sliderGroup.appendChild(sliderInput);
-
-            const sliderValue = document.createElement('span');
-            sliderValue.className = 'slider-value';
-            sliderValue.id = `value_${param}`;
-            sliderValue.innerText = this.parameterValues[param].toFixed(2);
-            sliderGroup.appendChild(sliderValue);
-
-            sliderInput.addEventListener('input', () => {
-                const val = parseFloat(sliderInput.value);
-                this.parameterValues[param] = val;
-                sliderValue.innerText = val.toFixed(2);
-                this.scheduleUpdateGraph();
-            });
-
-            group.appendChild(sliderGroup);
-
-            container.appendChild(group);
-        });
+        }
     } 
 
     initializeBoard() { 
         if (!this.board) { 
 
-            this.board = JXG.JSXGraph.initBoard('jxgbox', { 
+            this.board = JXG.JSXGraph.initBoard(this.dom.plotEl.id, { 
                 boundingbox: [-10, 10, 10, -10], 
                 axis: true, 
                 showCopyright: false,
@@ -600,8 +650,30 @@ class MathPlotter {
     }
 
     init() {
-        // Bind Parse Button
-        document.getElementById('parseButton').addEventListener('click', this.parseButtonHandler);
+
+        if (!this.headless()) {
+
+            let plotId = this.iiid();
+
+            this.dom.controlsWrapper = document.createElement('div');
+            this.dom.controlsWrapper.innerHTML = `
+                <div class="controls"> 
+                    <div class="control-group"> 
+                        <label for="expression">Expression:</label> 
+                        <input type="text" id="expression" value="a * sin(b * x) + c"> 
+                        <button id="parseButton">Parse</button> 
+                    </div> 
+                    <div id="parameters"></div> 
+                </div> 
+                <div id="${plotId}" style='${(this.config.plot.width ? `width: ${this.config.plot.width}px;` : "")}${(this.config.plot.height ? `height: ${this.config.plot.height}px;` : "")}' class='mathPlotterRoot ${(!this.config.plot.width && !this.config.plot.height ? "mathPlotterRootSizeNotSet" : "")}'></div>
+            `;
+
+            this.dom.rootEl.appendChild(this.dom.controlsWrapper);
+            this.dom.plotEl = this.dom.rootEl.querySelector(`#${plotId}`);
+
+            // Bind Parse Button
+            document.getElementById('parseButton')?.addEventListener('click', this.parseButtonHandler);
+        }
 
         const input = this.getInputExpr();
         this.plotInternal(input);
@@ -657,7 +729,7 @@ class MathPlotter {
                 }
             }
 
-            const functionId = this.generateFunctionId();
+            const functionId = this.iiid();
             const storedExpr = this.storeExpr(funcObj.fn);
             const isEquation = storedExpr.includes('=');
             const isImplicit = isEquation || storedExpr.includes('y');
@@ -715,7 +787,6 @@ class MathPlotter {
         }
     }
 
-    // Metoda destroy() pro uvolnění paměti a odstranění event handlerů
     destroy() {
         if (this.board) {
             // Remove event listeners from the board
@@ -782,28 +853,31 @@ class MathPlotter {
         }
     }
 
-    // Metoda save() pro vytvoření SVG a stažení uživateli
-    save() {
+    save(downloadName = null) {
         if (this.board) {
             // Get SVG element
             let svgData = this.board.renderer.svgRoot.outerHTML;
 
-            // Create a Blob
-            let blob = new Blob([svgData], {type: "image/svg+xml;charset=utf-8"});
+            if (downloadName) {
+                // Create a Blob
+                let blob = new Blob([svgData], {type: "image/svg+xml;charset=utf-8"});
 
-            // Create an object URL
-            let url = URL.createObjectURL(blob);
+                // Create an object URL
+                let url = URL.createObjectURL(blob);
 
-            // Create an anchor element and trigger download
-            let a = document.createElement('a');
-            a.href = url;
-            a.download = 'graph.svg';
-            document.body.appendChild(a);
-            a.click();
+                // Create an anchor element and trigger download
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = 'graph.svg';
+                document.body.appendChild(a);
+                a.click();
 
-            // Clean up
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+                // Clean up
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            return svgData;
         } else {
             alert('Grafická plocha není inicializována.');
         }
