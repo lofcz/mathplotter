@@ -31,23 +31,43 @@ function addHeaderPlugin() {
 }
 
 export default defineConfig({
-    css: {
-      preprocessorOptions: {
-        scss: {
-
+  build: {
+    lib: {
+      entry: path.resolve(__dirname, 'plotter.js'),
+      name: 'MathPlotter',
+      fileName: (format) => `plotter.min.js`,
+      formats: ['umd']
+    },
+    rollupOptions: {
+      output: {
+        globals: {
+          MathPlotter: 'MathPlotter'
         }
       }
     },
-    build: {
-      manifest: true,
-      rollupOptions: {
-        input: '/plotter.js',
-        output: {
-            entryFileNames: 'plotter.js'
-        },
-        plugins: [
-            addHeaderPlugin()
-        ]
+    target: 'es2016',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      },
+      format: {
+        comments: false
       }
     }
-  })
+  },
+  plugins: [
+    addHeaderPlugin(),
+    {
+      name: 'vite-plugin-scss',
+      buildStart() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'plotter.css',
+          source: readFileSync(path.resolve(__dirname, 'plotter.scss'), 'utf-8')
+        });
+      }
+    }
+  ]
+})

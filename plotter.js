@@ -882,5 +882,10 @@ class MathPlotter {
             alert('Grafická plocha není inicializována.');
         }
     }
+}
 
+export { MathPlotter };
+
+if (typeof window !== 'undefined') {
+    window.MathPlotter = MathPlotter;
 }
