@@ -63,8 +63,7 @@ class MathPlotter {
         })}`;
     }
 
-    static Fire(expressions) {
-
+    static FireShared(expressions) {
         if (!document.body) {
             return;
         }
@@ -80,15 +79,33 @@ class MathPlotter {
         });
         inst.init();
         inst.plot(expressions);
-        var data = inst.save();
-        inst.destroy();
 
-        if (MathPlotter.Debug) {
-            var imgEl = document.createElement("div");
-            imgEl.innerHTML = data;
-            document.body.appendChild(imgEl);
+        return inst;
+    }
+
+    static Fire(expressions) {
+
+        let inst = MathPlotter.FireShared(expressions);
+
+        if (!inst) {
+            return;
         }
 
+        var data = inst.save();
+        inst.destroy();
+        return data;
+    }
+
+    static async FireBitmap(expressions, format = "jpeg") {
+
+        let inst = MathPlotter.FireShared(expressions);
+
+        if (!inst) {
+            return;
+        }
+
+        var data = await inst.saveAsBitmap(format);
+        inst.destroy();
         return data;
     }
 
@@ -955,6 +972,65 @@ class MathPlotter {
         if (this.debounceTimeout) {
             clearTimeout(this.debounceTimeout);
         }
+    }
+
+    saveAsBitmap(format = "jpeg", downloadName = "") {
+
+        if (!this.board) {
+            return Promise.reject("Board is not initialized");
+        }
+
+        // Převod JSXGraph na SVG
+        return new Promise((resolve, reject) => {
+            var svg = this.board.renderer.svgRoot;
+            var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            rect.setAttribute('width', '100%');
+            rect.setAttribute('height', '100%');
+            rect.setAttribute('fill', 'white');
+            svg.insertBefore(rect, svg.firstChild);
+
+            var serializer = new XMLSerializer();
+            var svgString = serializer.serializeToString(svg);
+        
+            svg.removeChild(rect);
+
+            // Vytvoření dočasného img elementu
+            var img = new Image();
+            let board = this.board;
+
+            img.onload = function() {
+                // Vytvoření canvas elementu
+                var boundingBox = board.getBoundingBox();
+                var width = Math.abs(boundingBox[2] - boundingBox[0]) * board.unitX;
+                var height = Math.abs(boundingBox[1] - boundingBox[3]) * board.unitY;
+                
+                var canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                var ctx = canvas.getContext('2d');
+        
+                // Vykreslení SVG na canvas
+                ctx.drawImage(img, 0, 0);
+        
+                let finalData = canvas.toDataURL(format === "jpeg" ? 'image/jpeg' : "image/png");
+
+                if (downloadName) {
+                    var link = document.createElement('a');
+                    link.download = downloadName;
+                    link.href = finalData;
+                    link.click();
+                }
+                
+                resolve(finalData);
+            };
+        
+            img.onerror = function() {
+                reject("Failed to load image");
+            };
+
+            // Nastavení zdroje pro img element
+            img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+        });
     }
 
     save(downloadName = null) {
