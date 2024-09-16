@@ -28,17 +28,16 @@ class MathPlotter {
         this.colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'cyan', 'magenta'];
         this.parameterConfigs = {};
         this.parameterValues = {};  
-        this.config = Object.assign({}, defaultConfig, config);
+        this.sourceExpression = "";
+        this.config = this.deepMerge(defaultConfig, config);
         this.dom = {
             controlsWrapper: null,
             parseButton: null,
             plotEl: null,
-            rootEl: null
+            rootEl: null,
+            fnInputEl: null
         }
 
-        for (const [key, value] of Object.entries(this.config)) {
-            this[key] = value;
-        }
 
         this.dom.rootEl = document.getElementById(elId);
 
@@ -55,7 +54,30 @@ class MathPlotter {
         this.isThrottled = false;
     }
 
-    // Metoda k vytvoření unikátního ID pro každou funkci
+    deepMerge(target, source) {
+        const isObject = (obj) => obj && typeof obj === 'object';
+      
+        if (!isObject(target) || !isObject(source)) {
+            return source;
+        }
+      
+        Object.keys(source).forEach(key => {
+            const targetValue = target[key];
+            const sourceValue = source[key];
+      
+            if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
+                target[key] = targetValue.concat(sourceValue);
+            } else if (isObject(targetValue) && isObject(sourceValue)) {
+                target[key] = this.deepMerge(Object.assign({}, targetValue), sourceValue);
+            } else {
+                target[key] = sourceValue;
+            }
+        });
+      
+        return target;
+    }
+
+    // dom-friendly guid
     iiid() {
         return `_${'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
             var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -619,7 +641,12 @@ class MathPlotter {
 
 
     getInputExpr() {
-        return document.getElementById('expression').value;
+        if (this.dom.fnInputEl) {
+            this.sourceExpression = this.dom.fnInputEl.value;
+        }
+
+        console.log(this.sourceExpression);
+        return this.sourceExpression;
     }
 
     // Metoda pro vyčištění existujících funkcí a jejich grafů
@@ -641,8 +668,8 @@ class MathPlotter {
 
     parseSingleExpression(input) {
         const funcs = input.split(';').map(expr => expr.trim().replaceAll("–", '-')).filter(expr => expr.length > 0);
+
         if (funcs.length === 0) {
-            alert('Zadejte alespoň jeden výraz.');
             return null;
         }
 
@@ -654,13 +681,14 @@ class MathPlotter {
         if (!this.headless()) {
 
             let plotId = this.iiid();
+            let fnInputId = this.iiid();
 
             this.dom.controlsWrapper = document.createElement('div');
             this.dom.controlsWrapper.innerHTML = `
                 <div class="controls"> 
                     <div class="control-group"> 
-                        <label for="expression">Expression:</label> 
-                        <input type="text" id="expression" value="a * sin(b * x) + c"> 
+                        <label for="${fnInputId}">Expression:</label> 
+                        <input type="text" id="${fnInputId}" value="${this.sourceExpression}"> 
                         <button id="parseButton">Parse</button> 
                     </div> 
                     <div id="parameters"></div> 
@@ -669,6 +697,7 @@ class MathPlotter {
             `;
 
             this.dom.rootEl.appendChild(this.dom.controlsWrapper);
+            this.dom.fnInputEl = this.dom.rootEl.querySelector(`#${fnInputId}`);
             this.dom.plotEl = this.dom.rootEl.querySelector(`#${plotId}`);
 
             // Bind Parse Button
@@ -713,6 +742,10 @@ class MathPlotter {
         }
 
         let fnDump = "";
+
+        if (!funcs) {
+            return;
+        }
 
         // Proces všech funkcí
         funcs.forEach(funcObj => {
@@ -775,14 +808,18 @@ class MathPlotter {
 
         if (syncInput) {
             if (typeof expressions === 'string') {
-                document.getElementById("expression").value = expressions;
+                if (this.dom.fnInputEl) {
+                    this.dom.fnInputEl.value = expressions;
+                }
             } else if (Array.isArray(expressions)) {
             
                 if (fnDump.endsWith(";")) {
                     fnDump = fnDump.substring(0, fnDump.length - 1);
                 }
 
-                document.getElementById("expression").value = fnDump;
+                if (this.dom.fnInputEl) {
+                    this.dom.fnInputEl.value = fnDump;
+                }
             }
         }
     }

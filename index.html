@@ -17,9 +17,13 @@
                 plot: {
                     // width: 300,
                     // height: 300
+                },
+                ui: {
+                    headless: false
                 }
             });
             plotter.init();
+            window["plotter"] = plotter;
         }).catch(error => {
             console.error("Failed to load the module:", error);
         });
