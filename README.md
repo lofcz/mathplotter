@@ -25,7 +25,7 @@ MathPlotter is distributed as `umd` package. Load `jsxgraphcore.js`, `math.js` a
 
 Setup HTML:
 
-```
+```html
 <div id="plotterElement"></div>
 ```
 
