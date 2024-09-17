@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "release:patch": "npm version patch && npm run build",
     "release:minor": "npm version minor && npm run build",
-    "release:major": "npm version major && npm run build"
+    "release:major": "npm version major && npm run build",
+    "publish": "npm build && npm release:minor && npm publish"
   },
   "repository": {
     "type": "git",
