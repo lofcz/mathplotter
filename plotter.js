@@ -1035,8 +1035,36 @@ class MathPlotter {
 
     save(downloadName = null) {
         if (this.board) {
+
+            const escapeHTML = (str) => str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+
+            const settings = {
+                backgroundColor: 'white'
+            };        
+
             // Get SVG element
             let svgData = this.board.renderer.svgRoot.outerHTML;
+
+            const widthMatch = svgData.match(/width="(\d+)"/);
+            const heightMatch = svgData.match(/height="(\d+)"/);
+            const width = widthMatch ? widthMatch[1] : this.board.canvasWidth;
+            const height = heightMatch ? heightMatch[1] : this.board.canvasHeight;
+
+            const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
+            if (!svgData.startsWith('<?xml')) {
+                svgData = xmlDeclaration + svgData;
+            }
+
+            const svgOpeningTag = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" style="background-color: ${escapeHTML(settings.backgroundColor)};">`;
+            svgData = svgData.replace(/<svg[^>]*>/, svgOpeningTag);
 
             if (downloadName) {
                 // Create a Blob
